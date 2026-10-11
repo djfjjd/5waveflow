@@ -18,7 +18,9 @@ npx wrangler pages dev dist --compatibility-date=2026-10-01
 - Node.js: 20 이상
 - Production branch: `main`
 - 환경변수: `BINANCE_API_BASE=https://api.binance.com`
-- SPA fallback은 `public/_redirects`에 설정되어 있습니다.
+- SPA 경로는 Cloudflare Pages의 기본 fallback 동작으로 처리됩니다.
+
+현재 Pages 프로젝트처럼 Build command가 비어 있어도 첫 배포가 가능하도록 검증된 `dist` 산출물을 저장소에 포함합니다. 권장 운영 설정은 Pages의 **Settings → Build → Build configurations**에서 Build command를 `npm run build`로 지정하는 것입니다. 설정 후에는 Cloudflare가 매 배포마다 소스에서 새 산출물을 생성합니다.
 
 `wrangler.jsonc`의 `REPLACE_WITH_D1_DATABASE_ID`를 실제 D1 ID로 교체합니다.
 
