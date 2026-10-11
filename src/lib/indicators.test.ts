@@ -1,0 +1,2 @@
+import {describe,expect,it} from 'vitest';import {emaSeries,rsi,sma} from './indicators';
+describe('indicators',()=>{it('calculates SMA from trailing values',()=>expect(sma([1,2,3,4],2)).toBe(3.5));it('creates an EMA series without future leakage',()=>{const x=emaSeries([1,2,3,4,5],3);expect(x).toHaveLength(5);expect(x.at(-1)).toBeCloseTo(4)});it('returns 100 RSI for uninterrupted gains',()=>expect(rsi(Array.from({length:16},(_,i)=>i+1),14)).toBe(100));it('returns null for insufficient input',()=>expect(rsi([1,2],14)).toBeNull())});
