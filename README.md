@@ -22,13 +22,15 @@ npx wrangler pages dev dist --compatibility-date=2026-10-01
 
 현재 Pages 프로젝트처럼 Build command가 비어 있어도 첫 배포가 가능하도록 검증된 `dist` 산출물을 저장소에 포함합니다. 권장 운영 설정은 Pages의 **Settings → Build → Build configurations**에서 Build command를 `npm run build`로 지정하는 것입니다. 설정 후에는 Cloudflare가 매 배포마다 소스에서 새 산출물을 생성합니다.
 
-`wrangler.jsonc`의 `REPLACE_WITH_D1_DATABASE_ID`를 실제 D1 ID로 교체합니다.
+현재 초기 배포가 가짜 UUID 때문에 실패하지 않도록 D1 바인딩은 `wrangler.jsonc`에서 제외되어 있습니다. 데이터베이스를 생성한 뒤 Cloudflare Pages의 **Settings → Bindings → D1 database bindings**에서 변수 이름 `DB`로 `5waveflow` 데이터베이스를 연결하세요. 또는 `wrangler.jsonc`에 `d1_databases` 항목을 추가할 때 `wrangler d1 create`가 반환한 실제 UUID만 사용해야 합니다.
 
 ```bash
 npx wrangler d1 create 5waveflow
 npx wrangler d1 migrations apply 5waveflow --local
 npx wrangler d1 migrations apply 5waveflow --remote
 ```
+
+D1 연결 전에도 공개 시장 데이터 페이지와 Functions는 배포되며, 관리자 상태 응답의 `databaseBound` 값은 `false`입니다.
 
 ## Admin security
 

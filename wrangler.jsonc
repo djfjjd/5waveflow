@@ -1,1 +1,1 @@
-{"$schema":"node_modules/wrangler/config-schema.json","name":"5waveflow","compatibility_date":"2026-10-01","pages_build_output_dir":"dist","d1_databases":[{"binding":"DB","database_name":"5waveflow","database_id":"REPLACE_WITH_D1_DATABASE_ID","migrations_dir":"migrations"}],"vars":{"BINANCE_API_BASE":"https://api.binance.com"}}
+{"$schema":"node_modules/wrangler/config-schema.json","name":"5waveflow","compatibility_date":"2026-10-01","pages_build_output_dir":"dist","vars":{"BINANCE_API_BASE":"https://api.binance.com"}}

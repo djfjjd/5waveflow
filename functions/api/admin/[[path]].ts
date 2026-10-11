@@ -1,4 +1,4 @@
-interface Env { CF_ACCESS_TEAM_DOMAIN?:string; CF_ACCESS_AUD?:string; DB:D1Database }
+interface Env { CF_ACCESS_TEAM_DOMAIN?:string; CF_ACCESS_AUD?:string; DB?:D1Database }
 type Claims={aud?:string[]|string;exp?:number;iss?:string};
 type Jwk={kid?:string;kty:string;n?:string;e?:string;alg?:string;use?:string};
 
