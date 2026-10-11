@@ -18,8 +18,7 @@ export default function Dashboard(){
   const tickers=queries.flatMap(query=>query.data?[query.data.ticker]:[]);
   const bullish=tickers.length?Math.round(tickers.filter(ticker=>ticker.changePercent>0).length/tickers.length*100):null;
   const bearish=tickers.length?Math.round(tickers.filter(ticker=>ticker.changePercent<0).length/tickers.length*100):null;
-  const now=new Date();
-  const today=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+  const today=new Intl.DateTimeFormat('ko-KR',{year:'numeric',month:'long',day:'numeric',weekday:'long'}).format(new Date());
 
   return <main className="mx-auto max-w-[1440px] px-4 py-8 md:px-8 md:py-12">
     <section className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
