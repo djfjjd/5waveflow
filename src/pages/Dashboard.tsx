@@ -5,6 +5,7 @@ import {useTranslation} from 'react-i18next';
 import {Link} from 'react-router-dom';
 import MarketCard from '../components/MarketCard';
 import MarketChart from '../components/MarketChart';
+import TradingViewMarketOverview from '../components/TradingViewMarketOverview';
 import {getMarket} from '../lib/api';
 
 const periods=[['1H','1m'],['4H','5m'],['1D','15m'],['7D','1h']];
@@ -40,6 +41,8 @@ export default function Dashboard(){
       {queries.map((q,i)=>q.data?<MarketCard key={q.data.symbol} ticker={q.data.ticker} active={symbol===q.data.symbol} onClick={()=>setSymbol(q.data!.symbol)}/>:<div key={i} className="card h-[139px] animate-pulse p-5"><div className="h-4 w-28 rounded bg-[#26303d]"/><div className="mt-7 h-7 w-36 rounded bg-[#26303d]"/></div>)}
       <div className="card hidden p-5 lg:block"><div className="mb-4 flex justify-between"><span className="font-semibold">SOL / USDT</span><span className="rounded bg-[#202936] px-2 py-1 text-[10px] text-neutral">SOON</span></div><p className="text-sm text-neutral">데이터 공급 범위 확장 후 제공됩니다.</p></div>
     </section>
+
+    <TradingViewMarketOverview/>
 
     <section className="mt-6 grid gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">
       <div className="card min-w-0 overflow-hidden"><div className="flex flex-wrap items-center justify-between border-b border-[#25303c] px-5 py-4"><div><div className="font-semibold">{symbol.replace('USDT',' / USDT')}</div><div className="mt-1 text-xs text-neutral">Binance public market data</div></div><div className="flex gap-1 rounded-lg bg-background p-1">{periods.map(([label,value])=><button key={label} onClick={()=>setInterval(value)} className={`focus-ring rounded-md px-3 py-1.5 text-xs ${interval===value?'bg-primary text-white':'text-neutral'}`}>{label}</button>)}</div></div><div className="p-2 md:p-4">{active.data?<MarketChart candles={active.data.candles} ema20 ema50/>:<div className="grid h-[410px] place-items-center text-neutral"><RefreshCw className="animate-spin"/></div>}</div></div>
