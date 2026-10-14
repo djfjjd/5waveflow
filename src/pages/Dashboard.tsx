@@ -1,20 +1,15 @@
 import {useQuery} from '@tanstack/react-query';
-import {BarChart3,BrainCircuit,CalendarDays,Layers3,RefreshCw,ShieldCheck} from 'lucide-react';
-import {useState} from 'react';
+import {BarChart3,BrainCircuit,CalendarDays,Layers3,ShieldCheck} from 'lucide-react';
 import {useTranslation} from 'react-i18next';
 import {Link} from 'react-router-dom';
-import MarketChart from '../components/MarketChart';
 import TradingViewMarketOverview from '../components/TradingViewMarketOverview';
 import TradingViewQuoteCard from '../components/TradingViewQuoteCard';
 import {getMarket} from '../lib/api';
 
-const periods=[['1H','1m'],['4H','5m'],['1D','15m'],['7D','1h']];
-
 export default function Dashboard(){
   const{t}=useTranslation();
   const symbol='BTCUSDT';
-  const[interval,setInterval]=useState('1h');
-  const queries=['BTCUSDT','ETHUSDT'].map(s=>useQuery({queryKey:['market',s,s===symbol?interval:'1h'],queryFn:()=>getMarket(s,s===symbol?interval:'1h'),refetchInterval:60_000}));
+  const queries=['BTCUSDT','ETHUSDT'].map(s=>useQuery({queryKey:['market',s,'1h'],queryFn:()=>getMarket(s,'1h'),refetchInterval:60_000}));
   const active=queries[symbol==='BTCUSDT'?0:1];
   const tickers=queries.flatMap(query=>query.data?[query.data.ticker]:[]);
   const bullish=tickers.length?Math.round(tickers.filter(ticker=>ticker.changePercent>0).length/tickers.length*100):null;
@@ -42,10 +37,6 @@ export default function Dashboard(){
     </section>
 
     <TradingViewMarketOverview/>
-
-    <section className="mt-6">
-      <div className="card min-w-0 overflow-hidden"><div className="flex flex-wrap items-center justify-between border-b border-[#25303c] px-5 py-4"><div className="font-semibold">{symbol.replace('USDT',' / USDT')}</div><div className="flex gap-1 rounded-lg bg-background p-1">{periods.map(([label,value])=><button key={label} onClick={()=>setInterval(value)} className={`focus-ring rounded-md px-3 py-1.5 text-xs ${interval===value?'bg-primary text-white':'text-neutral'}`}>{label}</button>)}</div></div><div className="p-2 md:p-4">{active.data?<MarketChart candles={active.data.candles} ema20 ema50 height={320}/>:<div className="grid h-[320px] place-items-center text-neutral"><RefreshCw className="animate-spin"/></div>}</div></div>
-    </section>
 
     <section className="mt-8"><div className="mb-4 flex items-center justify-between"><h2 className="label">AI {t('probability')} · {t('technical')}</h2><Link className="text-xs text-primary" to={`/analysis/${symbol}`}>상세 분석 →</Link></div><div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4"><ProbabilityCard t={t}/><AnalysisCard icon={<Layers3/>} title="Elliott Wave" text={active.data?.analysis.elliott.detail||'실제 데이터 대기 중'}/><AnalysisCard icon={<BarChart3/>} title="Wyckoff Phase" text={active.data?.analysis.wyckoff.detail||'실제 데이터 대기 중'}/><AnalysisCard icon={<BrainCircuit/>} title="Indicators" text={active.data?.indicators.rsi!=null?`RSI ${active.data.indicators.rsi.toFixed(1)} · MACD ${active.data.indicators.macd?.toFixed(2)??'—'}`:'지표 계산 대기 중'}/></div></section>
     <section className="card mt-8 flex flex-col justify-between gap-4 p-6 sm:flex-row sm:items-center"><div><div className="label">PREDICTION HISTORY</div><p className="mt-2 text-sm text-neutral">검증 가능한 예측 기록과 모델 성능은 모델 학습 이후 제공됩니다.</p></div><Link to="/history" className="rounded-lg border border-[#354252] px-4 py-2 text-center text-sm">검증 상태 보기</Link></section>
