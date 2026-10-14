@@ -14,14 +14,13 @@ export default function Analysis(){
   const navigate=useNavigate();
   const hasQuantData=cryptoSymbols.has(symbol)||/^(KRX|NASDAQ|NYSE):[A-Z0-9.\-]+$/.test(symbol);
   const[interval,setInterval]=useState('1h');
-  const[symbolSearch,setSymbolSearch]=useState(symbol.replace('USDT',''));
-  useEffect(()=>setSymbolSearch(symbol.replace('USDT','')),[symbol]);
+  const[symbolSearch,setSymbolSearch]=useState(symbol);
+  useEffect(()=>setSymbolSearch(symbol),[symbol]);
   const query=useQuery({queryKey:['market',symbol,interval],queryFn:()=>getMarket(symbol,interval),enabled:hasQuantData});
   const frameQuery=useQuery({queryKey:['market-multiframe',symbol],queryFn:async()=>{const results:(MarketPayload|undefined)[]=[];for(const frame of analysisFrames)results.push(await getMarket(symbol,frame).catch(()=>undefined));return results},staleTime:60_000,enabled:hasQuantData});
   const multiFrame=buildMultiFrame(frameQuery.data??[]);
-  return <main className="mx-auto max-w-[1440px] px-4 py-8 md:px-8">
-    <div className="mb-6 flex justify-end"><SymbolSearch value={symbolSearch} setValue={setSymbolSearch} onSubmit={submitSymbol}/></div>
-    <div className="mb-4 flex flex-wrap gap-2">{['15m','30m','1h','4h','1d','1w'].map(value=><button key={value} onClick={()=>setInterval(value)} className={`rounded-lg px-3 py-2 text-xs ${value===interval?'bg-primary':'bg-surface text-neutral'}`}>{value}</button>)}</div>
+  return <main className="mx-auto max-w-[1440px] px-4 pb-8 pt-2 md:px-8 md:pt-4">
+    <div className="mb-4 flex flex-wrap items-center justify-between gap-2"><div className="flex flex-wrap gap-2">{['15m','30m','1h','4h','1d','1w'].map(value=><button key={value} onClick={()=>setInterval(value)} className={`rounded-lg px-3 py-2 text-xs ${value===interval?'bg-primary':'bg-surface text-neutral'}`}>{value}</button>)}</div><SymbolSearch value={symbolSearch} setValue={setSymbolSearch} onSubmit={submitSymbol}/></div>
     {!hasQuantData&&<div className="mb-4 rounded-lg border border-[#f5b942]/30 bg-[#f5b942]/5 px-4 py-3 text-xs text-[#e9bd58]">TradingView 차트는 표시되지만 이 종목의 자체 OHLCV 분석 공급자는 아직 연결되지 않았습니다.</div>}
 
     <section className="card overflow-hidden p-2"><TradingViewAnalysisChart symbol={query.data?tradingViewSymbol(symbol,query.data.quoteCurrency):tradingViewRouteSymbol(symbol)} interval={interval}/><div className="px-2 pb-1 pt-2 text-right text-[10px] text-neutral">Official chart by TradingView</div></section>
@@ -50,7 +49,7 @@ type MultiFrame={summary:string;details:string};
 function buildMultiFrame(markets:(MarketPayload|undefined)[]):MultiFrame{let bullish=0,bearish=0,available=0;const details=analysisFrames.map((frame,index)=>{const scenario=markets[index]?.analysis.elliott.scenarios[0];if(!scenario)return`${frame}: 판정 불가`;available++;if(scenario.direction==='bullish')bullish++;else bearish++;return`${frame}: ${scenario.direction==='bullish'?'상승':'하락'} ${scenario.pattern}`});const direction=!available?'다중 시간대 판정 불가':bullish===bearish?'상승·하락 혼조':bullish>bearish?'다중 시간대 상승 우세':'다중 시간대 하락 우세';return{summary:`${direction} (${available}/${analysisFrames.length})`,details:details.join(' · ')}}
 function SymbolSearch({value,setValue,onSubmit}:{value:string;setValue:(value:string)=>void;onSubmit:(event:FormEvent)=>void}){return <form onSubmit={onSubmit} className="flex w-full max-w-sm items-center rounded-lg border border-[#303b48] bg-surface px-3 focus-within:border-primary"><Search size={16} className="shrink-0 text-neutral"/><input aria-label="심볼 검색" list="analysis-symbols" value={value} onChange={event=>setValue(event.target.value)} placeholder="005930, NASDAQ:AAPL, BTC…" className="min-w-0 flex-1 bg-transparent px-2 py-2.5 text-sm text-white outline-none"/><datalist id="analysis-symbols"><option value="005930">Samsung Electronics</option><option value="035720">Kakao</option><option value="NASDAQ:AAPL">Apple</option><option value="NASDAQ:NVDA">NVIDIA</option><option value="NASDAQ:TSLA">Tesla</option><option value="BTC">Bitcoin</option><option value="ETH">Ethereum</option><option value="SOL">Solana</option><option value="XRP">XRP</option></datalist><button type="submit" className="text-[10px] font-medium text-primary">검색</button></form>}
 function statusLabel(status:'confirmed'|'developing'|'unavailable'){return status==='confirmed'?'확정':status==='developing'?'진행 중':'판정 불가'}
-function tradingViewSymbol(symbol:string,quoteCurrency:'USDT'|'KRW'|'USD'){if(symbol.includes(':'))return symbol;const asset=symbol.replace('USDT','');return quoteCurrency==='KRW'?`UPBIT:${asset}KRW`:`BINANCE:${asset}USDT`}
+function tradingViewSymbol(symbol:string,_quoteCurrency:'USDT'|'KRW'|'USD'){if(symbol.includes(':'))return symbol;return`BINANCE:${symbol}`}
 function tradingViewRouteSymbol(symbol:string){if(cryptoSymbols.has(symbol))return`BINANCE:${symbol}`;return symbol.includes(':')?symbol:`NASDAQ:${symbol}`}
 function NumberStat({n,value}:{n:string;value:number|null}){return <Stat n={n} value={value==null?'데이터 부족':value.toFixed(2)}/>}
 function Stat({n,value}:{n:string;value:string}){return <div className="min-w-0"><dt className="text-neutral">{n}</dt><dd className="mt-1 break-words font-medium tabular-nums">{value}</dd></div>}
