@@ -53,7 +53,7 @@ export default function TradingViewMarketOverview(){
   return <section className="mt-6">
     <div className="mb-3 flex items-center justify-between"><h2 className="label">TRADINGVIEW CANDLE CHART</h2><span className="text-[11px] text-neutral">Official widget</span></div>
     <div className="card overflow-hidden p-2">
-      <div ref={container} className="tradingview-widget-container h-[460px] w-full"/>
+      <div ref={container} className="tradingview-widget-container h-[360px] w-full"/>
       <div className="px-2 pb-1 text-right text-[10px] text-neutral"><a href="https://www.tradingview.com/symbols/BTCUSDT/" rel="noopener nofollow" target="_blank" className="text-primary hover:underline">BTCUSDT chart</a> by TradingView</div>
     </div>
   </section>

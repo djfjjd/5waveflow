@@ -24,8 +24,8 @@ export default function TradingViewQuoteCard({symbol,title,href}:Props){
   },[symbol,locale]);
 
   return <article className="card min-w-0 overflow-hidden">
-    <div className="flex items-center justify-between border-b border-[#25303c] px-4 py-3"><h2 className="text-sm font-semibold">{title}</h2><span className="text-[10px] text-neutral">LIVE · TradingView</span></div>
-    <div ref={ref} className="tradingview-widget-container min-h-[96px] w-full px-2 py-3"/>
-    <div className="px-4 pb-3 text-right text-[10px] text-neutral"><a href={href} rel="noopener nofollow" target="_blank" className="text-primary hover:underline">상세 시세</a> by TradingView</div>
+    <div className="flex min-w-0 items-center justify-between border-b border-[#25303c] px-2 py-2 sm:px-4 sm:py-3"><h2 className="truncate text-[10px] font-semibold sm:text-sm">{title}</h2><span className="hidden text-[10px] text-neutral md:block">LIVE · TradingView</span></div>
+    <div ref={ref} className="tradingview-widget-container min-h-[82px] w-full overflow-hidden px-1 py-2 sm:min-h-[96px] sm:px-2 sm:py-3"/>
+    <div className="hidden px-4 pb-3 text-right text-[10px] text-neutral sm:block"><a href={href} rel="noopener nofollow" target="_blank" className="text-primary hover:underline">상세 시세</a> by TradingView</div>
   </article>
 }

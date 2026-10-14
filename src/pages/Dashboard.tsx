@@ -35,7 +35,7 @@ export default function Dashboard(){
       </div>
     </section>
 
-    <section className="grid gap-4 lg:grid-cols-3">
+    <section className="grid grid-cols-3 gap-2 sm:gap-4">
       <TradingViewQuoteCard symbol="BINANCE:BTCUSDT" title="BTC / USDT · Binance Spot" href="https://www.tradingview.com/symbols/BTCUSDT/?exchange=BINANCE"/>
       <TradingViewQuoteCard symbol="UPBIT:BTCKRW" title="BTC / KRW · Upbit" href="https://www.tradingview.com/symbols/BTCKRW/?exchange=UPBIT"/>
       <TradingViewQuoteCard symbol="FX_IDC:USDKRW" title="USD / KRW · Exchange Rate" href="https://www.tradingview.com/symbols/USDKRW/?exchange=FX_IDC"/>
