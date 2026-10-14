@@ -1,4 +1,5 @@
 import {indicators} from '../../src/lib/indicators';
+import {analyzePatterns} from '../../src/lib/patterns';
 
 interface Env { BINANCE_API_BASE?: string }
 type Candle={time:number;open:number;high:number;low:number;close:number;volume:number};
@@ -6,7 +7,7 @@ type ProviderData={provider:'Binance Spot'|'Upbit KRW';quoteCurrency:'USDT'|'KRW
 type UpbitCandle={candle_date_time_utc:string;opening_price:number;high_price:number;low_price:number;trade_price:number;candle_acc_trade_volume:number};
 type UpbitTicker={trade_price:number;signed_change_rate:number;acc_trade_price_24h:number;high_price:number;low_price:number};
 const allowedSymbols=new Set(['BTCUSDT','ETHUSDT']);
-const allowedIntervals=new Set(['1m','5m','15m','1h','4h','1d']);
+const allowedIntervals=new Set(['1m','5m','15m','1h','4h','1d','1w']);
 
 export const onRequestGet:PagesFunction<Env>=async({request,env})=>{
   const url=new URL(request.url);
@@ -17,12 +18,12 @@ export const onRequestGet:PagesFunction<Env>=async({request,env})=>{
     let data:ProviderData;
     try{data=await fetchBinance(env.BINANCE_API_BASE||'https://data-api.binance.vision',symbol,interval)}
     catch{data=await fetchUpbit(symbol,interval)}
-    const recent=data.candles.slice(-20),prior=data.candles.slice(-40,-20);
-    const high=Math.max(...recent.map(candle=>candle.high)),low=Math.min(...recent.map(candle=>candle.low));
-    const priorHigh=Math.max(...prior.map(candle=>candle.high)),priorLow=Math.min(...prior.map(candle=>candle.low));
-    const structure=high>priorHigh&&low>priorLow?'higher range':high<priorHigh&&low<priorLow?'lower range':'overlapping range';
+    const closedCandles=onlyClosedCandles(data.candles,interval,Date.now());
+    if(closedCandles.length<50)throw new Error('Insufficient closed candles');
     const updatedAt=new Date().toISOString();
-    return json({symbol,interval,provider:data.provider,quoteCurrency:data.quoteCurrency,ticker:{symbol,price:data.ticker.price,changePercent:data.ticker.changePercent,volume:data.ticker.volume,high:data.ticker.high,low:data.ticker.low,updatedAt},candles:data.candles,indicators:indicators(data.candles),analysisTime:interval,updatedAt,dataPoints:data.candles.length,analysis:{elliott:{status:'candidate_only',detail:`ZigZag 확정 전 ${structure} 후보. 파동 번호는 확정하지 않습니다.`},wyckoff:{status:'candidate_only',detail:`최근 가격·거래량은 ${structure} 후보로만 분류됩니다.`}},probability:null,probabilityStatus:'unavailable'},200,{'Cache-Control':'public, max-age=30, s-maxage=30'});
+    const lastClosed=closedCandles.at(-1)!;
+    const dataStatus=Date.now()-(lastClosed.time+intervalSeconds(interval))*1000>intervalSeconds(interval)*2000?'stale':'fresh';
+    return json({symbol,interval,provider:data.provider,quoteCurrency:data.quoteCurrency,ticker:{symbol,price:data.ticker.price,changePercent:data.ticker.changePercent,volume:data.ticker.volume,high:data.ticker.high,low:data.ticker.low,updatedAt},candles:data.candles,indicators:indicators(closedCandles),analysisTime:interval,updatedAt,dataTimestamp:new Date(lastClosed.time*1000).toISOString(),dataStatus,dataPoints:closedCandles.length,currentCandleComplete:closedCandles.length===data.candles.length,analysis:analyzePatterns(closedCandles),probability:null,probabilityStatus:'unavailable'},200,{'Cache-Control':'public, max-age=30, s-maxage=30'});
   }catch(error){return json({error:'Market data provider unavailable',detail:error instanceof Error?error.message:'Unknown error'},502)}
 };
 
@@ -42,7 +43,7 @@ async function fetchBinance(base:string,symbol:string,interval:string):Promise<P
 
 async function fetchUpbit(symbol:string,interval:string):Promise<ProviderData>{
   const market=`KRW-${symbol.replace('USDT','')}`;
-  const path=interval==='1d'?'days':`minutes/${({ '1m':1,'5m':5,'15m':15,'1h':60,'4h':240 } as Record<string,number>)[interval]}`;
+  const path=interval==='1d'?'days':interval==='1w'?'weeks':`minutes/${({ '1m':1,'5m':5,'15m':15,'1h':60,'4h':240 } as Record<string,number>)[interval]}`;
   const tickerPromise=fetchJson<UpbitTicker[]>(`https://api.upbit.com/v1/ticker?markets=${market}`);
   const rows:UpbitCandle[]=[];
   let to:string|undefined;
@@ -62,4 +63,6 @@ async function fetchUpbit(symbol:string,interval:string):Promise<ProviderData>{
 }
 
 async function fetchJson<T>(url:string):Promise<T>{const response=await fetch(url,{headers:{accept:'application/json'},signal:AbortSignal.timeout(8000)});if(!response.ok)throw new Error(`Upbit response ${response.status}`);return response.json() as Promise<T>}
+function intervalSeconds(interval:string){return({ '1m':60,'5m':300,'15m':900,'1h':3600,'4h':14400,'1d':86400,'1w':604800 } as Record<string,number>)[interval]}
+export function onlyClosedCandles(candles:Candle[],interval:string,now:number){const duration=intervalSeconds(interval);return candles.filter(candle=>(candle.time+duration)*1000<=now)}
 function json(body:unknown,status=200,extra:Record<string,string>={}){return new Response(JSON.stringify(body),{status,headers:{'content-type':'application/json;charset=UTF-8','X-Content-Type-Options':'nosniff',...extra}})}
