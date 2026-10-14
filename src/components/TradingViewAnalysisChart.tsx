@@ -1,16 +1,13 @@
 import {useEffect,useLayoutEffect,useRef,useState} from 'react';
 import {useTranslation} from 'react-i18next';
+import type {MarketPayload} from '../types';
 
-type Props={symbol:string;interval:string};
+type Props={symbol:string;interval:string;analysis?:MarketPayload['analysis']};
 
 const intervals:Record<string,string>={'15m':'15','30m':'30','1h':'60','4h':'240','1d':'D','1w':'W'};
-const studies=[
-  {id:'RSI@tv-basicstudies',inputs:{length:14}},
-  {id:'MACD@tv-basicstudies',inputs:{'fast length':12,'slow length':26,'signal length':9}},
-  {id:'MAExp@tv-basicstudies',inputs:{length:20}},
-];
+const studies=[{id:'RSI@tv-basicstudies',inputs:{length:14}}];
 
-export default function TradingViewAnalysisChart({symbol,interval}:Props){
+export default function TradingViewAnalysisChart({symbol,interval,analysis}:Props){
   const container=useRef<HTMLDivElement>(null);
   const[height,setHeight]=useState(0);
   const{i18n}=useTranslation();
@@ -31,5 +28,17 @@ export default function TradingViewAnalysisChart({symbol,interval}:Props){
     root.append(widget,script);
     return()=>root.replaceChildren();
   },[height,interval,locale,symbol]);
-  return <div ref={container} className="tradingview-widget-container aspect-square w-full md:aspect-video"/>;
+  return <div className="relative"><div ref={container} className="tradingview-widget-container aspect-square w-full md:aspect-video"/><AnalysisOverlay analysis={analysis} korean={locale==='kr'}/></div>;
+}
+
+function AnalysisOverlay({analysis,korean}:{analysis:MarketPayload['analysis']|undefined;korean:boolean}){
+  const elliott=analysis?.elliott,scenario=elliott?.scenarios[0];
+  const confirmedPivots=elliott?.pivots.filter(pivot=>pivot.confirmed).length??0;
+  const waveText=scenario?scenario.waveLabels.join(' → '):(korean?`확정 피벗 ${confirmedPivots}개`:`${confirmedPivots} confirmed pivots`);
+  const events=analysis?.wyckoff.events.slice(-4).map(event=>event.type).join(' · ');
+  const wyckoffText=analysis?.wyckoff.phase?`Phase ${analysis.wyckoff.phase}${events?` · ${events}`:''}`:(events||(korean?'이벤트 판정 대기':'Awaiting event confirmation'));
+  return <div className="pointer-events-none absolute left-2 top-12 z-10 max-w-[calc(100%-1rem)] space-y-1.5 md:left-4 md:top-16">
+    <div className="w-fit max-w-full rounded-md border border-primary/30 bg-[#0d131b]/90 px-2 py-1.5 shadow-lg backdrop-blur-sm md:px-3 md:py-2"><div className="text-[8px] font-semibold tracking-wider text-primary md:text-[10px]">ELLIOTT WAVE</div><div className="mt-0.5 truncate text-[9px] font-medium md:text-xs">{scenario?.label??(korean?'유효 파동 후보 대기':'Awaiting valid wave candidate')} · {waveText}</div></div>
+    <div className="w-fit max-w-full rounded-md border border-[#8b95a5]/30 bg-[#0d131b]/90 px-2 py-1.5 shadow-lg backdrop-blur-sm md:px-3 md:py-2"><div className="text-[8px] font-semibold tracking-wider text-neutral md:text-[10px]">WYCKOFF</div><div className="mt-0.5 truncate text-[9px] font-medium md:text-xs">{wyckoffText}</div></div>
+  </div>
 }
