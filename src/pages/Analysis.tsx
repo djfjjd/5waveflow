@@ -24,7 +24,7 @@ export default function Analysis(){
     <div className="mb-4 flex flex-wrap items-center justify-between gap-2"><div className="flex flex-wrap gap-2">{['15m','30m','1h','4h','1d','1w'].map(value=><button key={value} onClick={()=>setInterval(value)} className={`rounded-lg px-3 py-2 text-xs ${value===interval?'bg-primary':'bg-surface text-neutral'}`}>{value}</button>)}</div><SymbolSearch value={symbolSearch} setValue={setSymbolSearch} onSubmit={submitSymbol}/></div>
     {!hasQuantData&&<div className="mb-4 rounded-lg border border-[#f5b942]/30 bg-[#f5b942]/5 px-4 py-3 text-xs text-[#e9bd58]">TradingView 차트는 표시되지만 이 종목의 자체 OHLCV 분석 공급자는 아직 연결되지 않았습니다.</div>}
 
-    <section className="card overflow-hidden p-2"><TradingViewAnalysisChart symbol={tradingViewRouteSymbol(symbol,query.data?.provider)} interval={interval} analysis={query.data?.analysis}/><div className="px-2 pb-1 pt-2 text-right text-[10px] text-neutral">Official chart by TradingView</div></section>
+    <section className="card overflow-hidden p-2"><TradingViewAnalysisChart symbol={tradingViewRouteSymbol(symbol,query.data?.provider)} interval={interval} market={query.data}/><div className="px-2 pb-1 pt-2 text-right text-[10px] text-neutral">Official chart by TradingView</div></section>
 
     <section className="mt-5 grid grid-cols-2 gap-2 md:grid-cols-4 md:gap-5">
       <ElliottDetails market={query.data} multiFrame={multiFrame} unavailable={!hasQuantData}/>

@@ -2,12 +2,12 @@ import {useEffect,useLayoutEffect,useRef,useState} from 'react';
 import {useTranslation} from 'react-i18next';
 import type {MarketPayload} from '../types';
 
-type Props={symbol:string;interval:string;analysis?:MarketPayload['analysis']};
+type Props={symbol:string;interval:string;market?:MarketPayload};
 
 const intervals:Record<string,string>={'15m':'15','30m':'30','1h':'60','4h':'240','1d':'D','1w':'W'};
 const studies=[{id:'RSI@tv-basicstudies',inputs:{length:14}}];
 
-export default function TradingViewAnalysisChart({symbol,interval,analysis}:Props){
+export default function TradingViewAnalysisChart({symbol,interval,market}:Props){
   const container=useRef<HTMLDivElement>(null);
   const[height,setHeight]=useState(0);
   const{i18n}=useTranslation();
@@ -28,17 +28,20 @@ export default function TradingViewAnalysisChart({symbol,interval,analysis}:Prop
     root.append(widget,script);
     return()=>root.replaceChildren();
   },[height,interval,locale,symbol]);
-  return <div className="relative"><div ref={container} className="tradingview-widget-container aspect-square w-full md:aspect-video"/><AnalysisOverlay analysis={analysis} korean={locale==='kr'}/></div>;
+  return <div className="relative"><div ref={container} className="tradingview-widget-container aspect-square w-full md:aspect-video"/><AnalysisMarkers market={market}/></div>;
 }
 
-function AnalysisOverlay({analysis,korean}:{analysis:MarketPayload['analysis']|undefined;korean:boolean}){
-  const elliott=analysis?.elliott,scenario=elliott?.scenarios[0];
-  const confirmedPivots=elliott?.pivots.filter(pivot=>pivot.confirmed).length??0;
-  const waveText=scenario?scenario.waveLabels.join(' → '):(korean?`확정 피벗 ${confirmedPivots}개`:`${confirmedPivots} confirmed pivots`);
-  const events=analysis?.wyckoff.events.slice(-4).map(event=>event.type).join(' · ');
-  const wyckoffText=analysis?.wyckoff.phase?`Phase ${analysis.wyckoff.phase}${events?` · ${events}`:''}`:(events||(korean?'이벤트 판정 대기':'Awaiting event confirmation'));
-  return <div className="pointer-events-none absolute left-2 top-12 z-10 max-w-[calc(100%-1rem)] space-y-1.5 md:left-4 md:top-16">
-    <div className="w-fit max-w-full rounded-md border border-primary/30 bg-[#0d131b]/90 px-2 py-1.5 shadow-lg backdrop-blur-sm md:px-3 md:py-2"><div className="text-[8px] font-semibold tracking-wider text-primary md:text-[10px]">ELLIOTT WAVE</div><div className="mt-0.5 truncate text-[9px] font-medium md:text-xs">{scenario?.label??(korean?'유효 파동 후보 대기':'Awaiting valid wave candidate')} · {waveText}</div></div>
-    <div className="w-fit max-w-full rounded-md border border-[#8b95a5]/30 bg-[#0d131b]/90 px-2 py-1.5 shadow-lg backdrop-blur-sm md:px-3 md:py-2"><div className="text-[8px] font-semibold tracking-wider text-neutral md:text-[10px]">WYCKOFF</div><div className="mt-0.5 truncate text-[9px] font-medium md:text-xs">{wyckoffText}</div></div>
+function AnalysisMarkers({market}:{market:MarketPayload|undefined}){
+  if(!market)return null;
+  const candles=market.candles,scenario=market.analysis.elliott.scenarios[0];
+  const start=Math.max(0,candles.length-160),visible=candles.slice(start);
+  if(!visible.length)return null;
+  const high=Math.max(...visible.map(candle=>candle.high)),low=Math.min(...visible.map(candle=>candle.low)),range=Math.max(high-low,Number.EPSILON);
+  const position=(index:number,price:number)=>({left:`${8+((index-start)/Math.max(visible.length-1,1))*82}%`,top:`${16+((high-price)/range)*54}%`});
+  const waves=scenario?scenario.pivotIndexes.flatMap((index,labelIndex)=>{const pivot=market.analysis.elliott.pivots.find(value=>value.index===index);return index>=start&&pivot?[{key:`wave-${index}`,index,price:pivot.price,label:scenario.waveLabels[labelIndex]}]:[]}):[];
+  const events=market.analysis.wyckoff.events.filter(event=>event.index>=start&&event.index<candles.length).slice(-8);
+  return <div className="pointer-events-none absolute inset-0 z-10 overflow-hidden">
+    {waves.map(marker=><span key={marker.key} style={position(marker.index,marker.price)} className="absolute -translate-x-1/2 -translate-y-1/2 rounded-full border border-primary bg-[#0d131b]/95 px-1.5 py-0.5 text-[9px] font-bold leading-none text-primary shadow-lg md:px-2 md:py-1 md:text-xs">{marker.label}</span>)}
+    {events.map(event=><span key={`${event.type}-${event.index}`} style={position(event.index,event.price)} className="absolute -translate-x-1/2 translate-y-2 rounded border border-[#f5b942]/70 bg-[#0d131b]/95 px-1 py-0.5 text-[8px] font-semibold leading-none text-[#f5b942] shadow-lg md:px-1.5 md:py-1 md:text-[10px]">{event.type}</span>)}
   </div>
 }
