@@ -4,6 +4,7 @@ import {useTranslation} from 'react-i18next';
 import {Link} from 'react-router-dom';
 import TradingViewMarketOverview from '../components/TradingViewMarketOverview';
 import TradingViewQuoteCard from '../components/TradingViewQuoteCard';
+import UpbitQuoteCard from '../components/UpbitQuoteCard';
 import {getMarket} from '../lib/api';
 
 export default function Dashboard(){
@@ -32,7 +33,7 @@ export default function Dashboard(){
 
     <section className="grid grid-cols-3 gap-2 sm:gap-4">
       <TradingViewQuoteCard symbol="BINANCE:BTCUSDT" title="BTC / USDT · Binance Spot" href="https://www.tradingview.com/symbols/BTCUSDT/?exchange=BINANCE"/>
-      <TradingViewQuoteCard symbol="UPBIT:BTCKRW" title="BTC / KRW · Upbit" href="https://www.tradingview.com/symbols/BTCKRW/?exchange=UPBIT"/>
+      <UpbitQuoteCard/>
       <TradingViewQuoteCard symbol="FX_IDC:USDKRW" title="USD / KRW · Exchange Rate" href="https://www.tradingview.com/symbols/USDKRW/?exchange=FX_IDC"/>
     </section>
 
