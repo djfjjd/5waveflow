@@ -1,5 +1,6 @@
 import {useQuery} from '@tanstack/react-query';
-import {useState} from 'react';
+import {Search} from 'lucide-react';
+import {type FormEvent,useEffect,useState} from 'react';
 import {useNavigate,useParams} from 'react-router-dom';
 import TradingViewAnalysisChart from '../components/TradingViewAnalysisChart';
 import {getMarket} from '../lib/api';
@@ -11,11 +12,13 @@ export default function Analysis(){
   const{symbol='BTCUSDT'}=useParams();
   const navigate=useNavigate();
   const[interval,setInterval]=useState('1h');
+  const[symbolSearch,setSymbolSearch]=useState(symbol.replace('USDT',''));
+  useEffect(()=>setSymbolSearch(symbol.replace('USDT','')),[symbol]);
   const query=useQuery({queryKey:['market',symbol,interval],queryFn:()=>getMarket(symbol,interval)});
   const frameQuery=useQuery({queryKey:['market-multiframe',symbol],queryFn:async()=>{const results:(MarketPayload|undefined)[]=[];for(const frame of analysisFrames)results.push(await getMarket(symbol,frame).catch(()=>undefined));return results},staleTime:60_000});
   const multiFrame=buildMultiFrame(frameQuery.data??[]);
   return <main className="mx-auto max-w-[1440px] px-4 py-8 md:px-8">
-    <div className="mb-6 flex flex-wrap items-end justify-between gap-4"><div><div className="label">ASSET ANALYSIS</div><h1 className="mt-2 text-3xl font-semibold">{symbol.replace('USDT',` / ${query.data?.quoteCurrency??'USDT'}`)}</h1></div><label className="text-xs text-neutral">분석 종목<select value={symbol} onChange={event=>navigate(`/analysis/${event.target.value}`)} className="ml-2 rounded-lg border border-[#303b48] bg-surface px-3 py-2 text-sm text-white"><option value="BTCUSDT">BTC</option><option value="ETHUSDT">ETH</option><option value="SOLUSDT">SOL</option><option value="XRPUSDT">XRP</option></select></label></div>
+    <div className="mb-6 flex justify-end"><SymbolSearch value={symbolSearch} setValue={setSymbolSearch} onSubmit={submitSymbol}/></div>
     <div className="mb-4 flex flex-wrap gap-2">{['15m','30m','1h','4h','1d','1w'].map(value=><button key={value} onClick={()=>setInterval(value)} className={`rounded-lg px-3 py-2 text-xs ${value===interval?'bg-primary':'bg-surface text-neutral'}`}>{value}</button>)}</div>
 
     <section className="card overflow-hidden p-2">{query.data?<TradingViewAnalysisChart symbol={tradingViewSymbol(symbol,query.data.quoteCurrency)} interval={interval}/>:<div className="grid h-[410px] place-items-center text-neutral">{query.isError?'시장 데이터 오류':'불러오는 중…'}</div>}<div className="px-2 pb-1 pt-2 text-right text-[10px] text-neutral">Official chart by TradingView</div></section>
@@ -28,6 +31,8 @@ export default function Analysis(){
 
     <section className="mt-5 grid gap-5 md:grid-cols-2">{query.data&&<DataBasis market={query.data}/>}<div className="card p-5"><div className="label">PROBABILITY</div><p className="mt-3 text-sm leading-6 text-neutral">검증·보정된 모델이 배포되기 전까지 수치형 확률을 제공하지 않습니다.</p></div></section>
   </main>;
+
+  function submitSymbol(event:FormEvent){event.preventDefault();const asset=symbolSearch.toUpperCase().replace(/[^A-Z]/g,'').replace(/(USDT|KRW)$/,'');if(['BTC','ETH','SOL','XRP'].includes(asset))navigate(`/analysis/${asset}USDT`)}
 }
 
 function ElliottDetails({market,multiFrame}:{market:MarketPayload|undefined;multiFrame:MultiFrame}){const elliott=market?.analysis.elliott,primary=elliott?.scenarios[0];return <div className="card min-w-0 p-2 md:p-5"><div className="label text-[8px] md:text-xs">ELLIOTT WAVE</div><p className="mt-2 break-words text-[9px] font-medium leading-3 md:mt-3 md:text-sm md:leading-5">{multiFrame.summary}</p><p className="mt-1 text-[8px] leading-3 text-neutral md:hidden">일·4H·1H·30M·15M</p><div className="hidden md:block"><p className="mt-2 text-xs leading-5 text-neutral">{elliott?.detail??'분석 데이터를 불러오는 중입니다.'}</p><p className="mt-3 text-xs text-primary">다중 시간대: {multiFrame.details}</p>{primary&&<dl className="mt-3 grid grid-cols-2 gap-3 text-xs"><Stat n="현재 차트" value={primary.label}/><Stat n="상태" value={statusLabel(elliott!.status)}/><Stat n="무효화" value={primary.invalidationPrice.toLocaleString('ko-KR')}/><Stat n="되돌림" value={primary.fibonacci.retracement==null?'—':`${(primary.fibonacci.retracement*100).toFixed(1)}%`}/></dl>}</div></div>}
@@ -40,6 +45,7 @@ function DataBasis({market}:{market:MarketPayload}){return <div className="card 
 
 type MultiFrame={summary:string;details:string};
 function buildMultiFrame(markets:(MarketPayload|undefined)[]):MultiFrame{let bullish=0,bearish=0,available=0;const details=analysisFrames.map((frame,index)=>{const scenario=markets[index]?.analysis.elliott.scenarios[0];if(!scenario)return`${frame}: 판정 불가`;available++;if(scenario.direction==='bullish')bullish++;else bearish++;return`${frame}: ${scenario.direction==='bullish'?'상승':'하락'} ${scenario.pattern}`});const direction=!available?'다중 시간대 판정 불가':bullish===bearish?'상승·하락 혼조':bullish>bearish?'다중 시간대 상승 우세':'다중 시간대 하락 우세';return{summary:`${direction} (${available}/${analysisFrames.length})`,details:details.join(' · ')}}
+function SymbolSearch({value,setValue,onSubmit}:{value:string;setValue:(value:string)=>void;onSubmit:(event:FormEvent)=>void}){return <form onSubmit={onSubmit} className="flex w-full max-w-xs items-center rounded-lg border border-[#303b48] bg-surface px-3 focus-within:border-primary"><Search size={16} className="shrink-0 text-neutral"/><input aria-label="심볼 검색" list="analysis-symbols" value={value} onChange={event=>setValue(event.target.value)} placeholder="심볼 검색 (BTC, ETH…)" className="min-w-0 flex-1 bg-transparent px-2 py-2.5 text-sm text-white outline-none"/><datalist id="analysis-symbols"><option value="BTC">Bitcoin</option><option value="ETH">Ethereum</option><option value="SOL">Solana</option><option value="XRP">XRP</option></datalist><button type="submit" className="text-[10px] font-medium text-primary">검색</button></form>}
 function statusLabel(status:'confirmed'|'developing'|'unavailable'){return status==='confirmed'?'확정':status==='developing'?'진행 중':'판정 불가'}
 function tradingViewSymbol(symbol:string,quoteCurrency:'USDT'|'KRW'){const asset=symbol.replace('USDT','');return quoteCurrency==='KRW'?`UPBIT:${asset}KRW`:`BINANCE:${asset}USDT`}
 function NumberStat({n,value}:{n:string;value:number|null}){return <Stat n={n} value={value==null?'데이터 부족':value.toFixed(2)}/>}
