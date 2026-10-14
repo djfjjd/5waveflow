@@ -3,7 +3,7 @@ import {analyzePatterns} from '../../src/lib/patterns';
 
 interface Env { BINANCE_API_BASE?: string }
 type Candle={time:number;open:number;high:number;low:number;close:number;volume:number};
-type ProviderData={provider:'Binance Spot'|'Upbit KRW'|'Yahoo Finance';quoteCurrency:'USDT'|'KRW'|'USD';ticker:{price:number;changePercent:number;volume:number;high:number;low:number};candles:Candle[]};
+type ProviderData={provider:'Binance Spot'|'Kraken Spot'|'Upbit KRW'|'Yahoo Finance';quoteCurrency:'USDT'|'KRW'|'USD';ticker:{price:number;changePercent:number;volume:number;high:number;low:number};candles:Candle[]};
 type UpbitCandle={candle_date_time_utc:string;opening_price:number;high_price:number;low_price:number;trade_price:number;candle_acc_trade_volume:number};
 type UpbitTicker={trade_price:number;signed_change_rate:number;acc_trade_price_24h:number;high_price:number;low_price:number};
 const allowedSymbols=new Set(['BTCUSDT','ETHUSDT','SOLUSDT','XRPUSDT']);
@@ -19,7 +19,7 @@ export const onRequestGet:PagesFunction<Env>=async({request,env})=>{
   try{
     let data:ProviderData;
     if(stockSymbol)data=await fetchYahoo(symbol,interval);
-    else if(market==='binance')data=await fetchBinanceMarket(env.BINANCE_API_BASE,symbol,interval);
+    else if(market==='usdt')data=await fetchUsdtMarket(env.BINANCE_API_BASE,symbol,interval);
     else try{data=await fetchBinanceMarket(env.BINANCE_API_BASE,symbol,interval)}catch{data=await fetchUpbit(symbol,interval)}
     const closedCandles=onlyClosedCandles(data.candles,interval,Date.now());
     if(closedCandles.length<50)throw new Error('Insufficient closed candles');
@@ -30,6 +30,10 @@ export const onRequestGet:PagesFunction<Env>=async({request,env})=>{
     return json({symbol,interval,provider:data.provider,quoteCurrency:data.quoteCurrency,ticker:{symbol,price:data.ticker.price,changePercent:data.ticker.changePercent,volume:data.ticker.volume,high:data.ticker.high,low:data.ticker.low,updatedAt},candles:data.candles,indicators:indicators(closedCandles),analysisTime:interval,updatedAt,dataTimestamp:new Date(lastClosed.time*1000).toISOString(),dataStatus,dataPoints:closedCandles.length,currentCandleComplete:closedCandles.length===data.candles.length,analysis:analyzePatterns(closedCandles),probability:null,probabilityStatus:'unavailable'},200,{'Cache-Control':'public, max-age=30, s-maxage=30'});
   }catch(error){return json({error:'Market data provider unavailable',detail:error instanceof Error?error.message:'Unknown error'},502)}
 };
+
+async function fetchUsdtMarket(configuredBase:string|undefined,symbol:string,interval:string){
+  try{return await fetchBinanceMarket(configuredBase,symbol,interval)}catch{return fetchKraken(symbol,interval)}
+}
 
 async function fetchBinanceMarket(configuredBase:string|undefined,symbol:string,interval:string){
   const bases=[configuredBase,'https://data-api.binance.vision','https://api.binance.com','https://api1.binance.com'].filter((base,index,all):base is string=>Boolean(base)&&all.indexOf(base)===index);
@@ -49,6 +53,29 @@ async function fetchBinance(base:string,symbol:string,interval:string):Promise<P
     const candles=raw.map(row=>({time:Math.floor(Number(row[0])/1000),open:Number(row[1]),high:Number(row[2]),low:Number(row[3]),close:Number(row[4]),volume:Number(row[5])}));
     if(candles.length<200)throw new Error('Insufficient Binance candles');
     return{provider:'Binance Spot',quoteCurrency:'USDT',ticker:{price:Number(ticker.lastPrice),changePercent:Number(ticker.priceChangePercent),volume:Number(ticker.quoteVolume),high:Number(ticker.highPrice),low:Number(ticker.lowPrice)},candles};
+  }finally{clearTimeout(timer)}
+}
+
+type KrakenOhlc={error:string[];result:Record<string,unknown>};
+type KrakenTicker={error:string[];result:Record<string,{a:string[];b:string[];c:string[];v:string[];p:string[];h:string[];l:string[];o:string}>};
+async function fetchKraken(symbol:string,interval:string):Promise<ProviderData>{
+  const pair=symbol==='BTCUSDT'?'XBTUSDT':symbol;
+  const minutes=({ '1m':1,'5m':5,'15m':15,'30m':30,'1h':60,'4h':240,'1d':1440,'1w':10080 } as Record<string,number>)[interval];
+  const controller=new AbortController();
+  const timer=setTimeout(()=>controller.abort(),8000);
+  try{
+    const[ohlcResponse,tickerResponse]=await Promise.all([fetch(`https://api.kraken.com/0/public/OHLC?pair=${pair}&interval=${minutes}`,{signal:controller.signal}),fetch(`https://api.kraken.com/0/public/Ticker?pair=${pair}`,{signal:controller.signal})]);
+    if(!ohlcResponse.ok||!tickerResponse.ok)throw new Error(`Kraken response ${ohlcResponse.status}/${tickerResponse.status}`);
+    const ohlc=await ohlcResponse.json() as KrakenOhlc;
+    const tickerPayload=await tickerResponse.json() as KrakenTicker;
+    if(ohlc.error.length||tickerPayload.error.length)throw new Error(`Kraken API ${[...ohlc.error,...tickerPayload.error].join(', ')}`);
+    const ohlcKey=Object.keys(ohlc.result).find(key=>key!=='last');
+    const ticker=Object.values(tickerPayload.result)[0];
+    const rows=ohlcKey?ohlc.result[ohlcKey] as unknown[][]:[];
+    const candles=rows.map(row=>({time:Number(row[0]),open:Number(row[1]),high:Number(row[2]),low:Number(row[3]),close:Number(row[4]),volume:Number(row[6])})).filter(candle=>Object.values(candle).every(Number.isFinite)).slice(-500);
+    if(!ticker||candles.length<200)throw new Error('Insufficient Kraken candles');
+    const price=Number(ticker.c[0]),open=Number(ticker.o);
+    return{provider:'Kraken Spot',quoteCurrency:'USDT',ticker:{price,changePercent:open?((price-open)/open)*100:0,volume:Number(ticker.v[1])*price,high:Number(ticker.h[1]),low:Number(ticker.l[1])},candles};
   }finally{clearTimeout(timer)}
 }
 
