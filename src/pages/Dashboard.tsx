@@ -1,5 +1,5 @@
 import {useQuery} from '@tanstack/react-query';
-import {AlertCircle,BarChart3,BrainCircuit,CalendarDays,Layers3,RefreshCw,ShieldCheck} from 'lucide-react';
+import {BarChart3,BrainCircuit,CalendarDays,Layers3,RefreshCw,ShieldCheck} from 'lucide-react';
 import {useState} from 'react';
 import {useTranslation} from 'react-i18next';
 import {Link} from 'react-router-dom';
@@ -35,11 +35,9 @@ export default function Dashboard(){
       </div>
     </section>
 
-    {queries.some(q=>q.isError)&&<div className="mb-5 flex gap-2 rounded-xl border border-bearish/30 bg-bearish/10 p-4 text-sm text-bearish"><AlertCircle size={18}/>시장 데이터 공급자에 연결할 수 없습니다. 가짜 데이터는 표시하지 않습니다.</div>}
-
     <section className="grid gap-4 lg:grid-cols-3">
       <TradingViewQuoteCard symbol="BINANCE:BTCUSDT" title="BTC / USDT · Binance Spot" href="https://www.tradingview.com/symbols/BTCUSDT/?exchange=BINANCE"/>
-      <TradingViewQuoteCard symbol="KRX:KOSPI" title="KOSPI Composite Index" href="https://www.tradingview.com/symbols/KRX-KOSPI/"/>
+      <TradingViewQuoteCard symbol="TVC:KOSPI" title="KOSPI Composite Index" href="https://www.tradingview.com/symbols/TVC-KOSPI/"/>
       <TradingViewQuoteCard symbol="FX_IDC:USDKRW" title="USD / KRW · Exchange Rate" href="https://www.tradingview.com/symbols/USDKRW/?exchange=FX_IDC"/>
     </section>
 
