@@ -42,6 +42,7 @@ Cloudflare Zero Trust에서 `/admin*`, `/api/admin*`을 보호하는 Access Appl
 - Lightweight Charts 캔들/거래량/EMA 20·50
 - TradingView 공식 Advanced Chart 임베드 위젯(BTC/USDT 캔들 차트, 종목·시간대 변경)
 - 상단 TradingView 공식 실시간 숫자 시세(Binance BTC/USDT 현물, Upbit BTC/KRW, USD/KRW)
+- 모바일 화면 최상단 Pull-to-Refresh
 - RSI, MACD, EMA, ATR, Bollinger 계산 기반
 - Elliott/Wyckoff는 확정 판정이 아닌 후보 설명만 제공
 - 검증된 모델이 없으므로 상승/횡보/하락 확률은 의도적으로 미표시
