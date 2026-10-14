@@ -3,16 +3,16 @@ import {AlertCircle,BarChart3,BrainCircuit,CalendarDays,Layers3,RefreshCw,Shield
 import {useState} from 'react';
 import {useTranslation} from 'react-i18next';
 import {Link} from 'react-router-dom';
-import MarketCard from '../components/MarketCard';
 import MarketChart from '../components/MarketChart';
 import TradingViewMarketOverview from '../components/TradingViewMarketOverview';
+import TradingViewMiniChart from '../components/TradingViewMiniChart';
 import {getMarket} from '../lib/api';
 
 const periods=[['1H','1m'],['4H','5m'],['1D','15m'],['7D','1h']];
 
 export default function Dashboard(){
   const{t}=useTranslation();
-  const[symbol,setSymbol]=useState('BTCUSDT');
+  const symbol='BTCUSDT';
   const[interval,setInterval]=useState('1h');
   const queries=['BTCUSDT','ETHUSDT'].map(s=>useQuery({queryKey:['market',s,s===symbol?interval:'1h'],queryFn:()=>getMarket(s,s===symbol?interval:'1h'),refetchInterval:60_000}));
   const active=queries[symbol==='BTCUSDT'?0:1];
@@ -37,9 +37,10 @@ export default function Dashboard(){
 
     {queries.some(q=>q.isError)&&<div className="mb-5 flex gap-2 rounded-xl border border-bearish/30 bg-bearish/10 p-4 text-sm text-bearish"><AlertCircle size={18}/>시장 데이터 공급자에 연결할 수 없습니다. 가짜 데이터는 표시하지 않습니다.</div>}
 
-    <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-      {queries.map((q,i)=>q.data?<MarketCard key={q.data.symbol} ticker={q.data.ticker} active={symbol===q.data.symbol} onClick={()=>setSymbol(q.data!.symbol)}/>:<div key={i} className="card h-[139px] animate-pulse p-5"><div className="h-4 w-28 rounded bg-[#26303d]"/><div className="mt-7 h-7 w-36 rounded bg-[#26303d]"/></div>)}
-      <div className="card hidden p-5 lg:block"><div className="mb-4 flex justify-between"><span className="font-semibold">SOL / USDT</span><span className="rounded bg-[#202936] px-2 py-1 text-[10px] text-neutral">SOON</span></div><p className="text-sm text-neutral">데이터 공급 범위 확장 후 제공됩니다.</p></div>
+    <section className="grid gap-4 lg:grid-cols-3">
+      <TradingViewMiniChart symbol="BINANCE:BTCUSDT" title="BTC / USDT · Binance Spot" href="https://www.tradingview.com/symbols/BTCUSDT/?exchange=BINANCE"/>
+      <TradingViewMiniChart symbol="KRX:KOSPI" title="KOSPI · Korea Exchange" interval="D" href="https://www.tradingview.com/symbols/KRX-KOSPI/"/>
+      <TradingViewMiniChart symbol="FX_IDC:USDKRW" title="USD / KRW · Exchange Rate" href="https://www.tradingview.com/symbols/USDKRW/?exchange=FX_IDC"/>
     </section>
 
     <TradingViewMarketOverview/>
