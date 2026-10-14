@@ -28,7 +28,7 @@ export function analyzeWyckoff(candles:Candle[]):WyckoffAnalysis{
   if(types.has('SOS')){phase=types.has('Spring')?'D':'E';bias='accumulation';reasons.push('저항 돌파와 거래량 확인')}
   if(types.has('SOW')){phase=types.has('Upthrust')?'D':'E';bias='distribution';reasons.push('지지 이탈과 거래량 확인')}
   if(!phase&&(types.has('SC')||types.has('BC'))){phase='A';bias=types.has('SC')?'accumulation':'distribution';reasons.push('Climax성 거래량·스프레드 감지')}
-  if(!phase){counterReasons.push('Phase 판정에 필요한 Spring, Upthrust 또는 돌파 이벤트 부족');return{status:'unavailable',detail:'Wyckoff Phase를 판정할 충분한 이벤트가 없습니다.',phase:null,bias,support,resistance,events:latest,reasons,counterReasons,analyzedAt:candles.at(-1)?.time??null}}
+  if(!phase){counterReasons.push('Phase 판정에 필요한 Spring, Upthrust 또는 돌파 이벤트 부족');return{status:'developing',detail:`Trading Range ${support.toFixed(2)}–${resistance.toFixed(2)} · 감지 이벤트 ${latest.length}개 · Phase 확정 대기`,phase:null,bias,support,resistance,events:latest,reasons,counterReasons,analyzedAt:candles.at(-1)?.time??null}}
   const status=latest.some(event=>!event.confirmed)?'developing':'confirmed';
   return{status,detail:`Phase ${phase} ${bias==='accumulation'?'매집':bias==='distribution'?'분산':'불확실'} 후보 · ${reasons.join(', ')}`,phase,bias,support,resistance,events:latest,reasons,counterReasons,analyzedAt:candles.at(-1)?.time??null};
 }

@@ -9,9 +9,11 @@ export function analyzeElliott(candles:Candle[]):ElliottAnalysis{
   for(let start=Math.max(0,pivots.length-8);start<=pivots.length-6;start++){const scenario=evaluateImpulse(pivots.slice(start,start+6));if(scenario)scenarios.push(scenario)}
   for(let start=Math.max(0,pivots.length-6);start<=pivots.length-4;start++){const scenario=evaluateAbc(pivots.slice(start,start+4));if(scenario)scenarios.push(scenario)}
   const unique=scenarios.sort((a,b)=>Number(b.status==='confirmed')-Number(a.status==='confirmed')).slice(0,3);
-  const status=unique.some(value=>value.status==='confirmed')?'confirmed':unique.length?'developing':'unavailable';
-  return{status,detail:unique.length?`${unique[0].label} · ${unique[0].reasons.join(', ')}`:'Elliott 핵심 규칙을 충족하는 파동 후보가 없습니다.',pivots,scenarios:unique,analyzedAt:candles.at(-1)?.time??null};
+  const status=unique.some(value=>value.status==='confirmed')?'confirmed':'developing';
+  return{status,detail:unique.length?`${unique[0].label} · ${unique[0].reasons.join(', ')}`:structureSummary(pivots),pivots,scenarios:unique,analyzedAt:candles.at(-1)?.time??null};
 }
+
+function structureSummary(pivots:ZigZagPivot[]){const confirmed=pivots.filter(value=>value.confirmed),highs=confirmed.filter(value=>value.type==='high').slice(-2),lows=confirmed.filter(value=>value.type==='low').slice(-2);let structure='혼조 구조';if(highs.length===2&&lows.length===2){if(highs[1].price>highs[0].price&&lows[1].price>lows[0].price)structure='고점·저점 상승 구조';else if(highs[1].price<highs[0].price&&lows[1].price<lows[0].price)structure='고점·저점 하락 구조'}return`ZigZag 확정 피벗 ${confirmed.length}개 · ${structure} · 파동 규칙 충족 대기`}
 
 export function evaluateImpulse(p:ZigZagPivot[]):ElliottScenario|null{
   if(p.length!==6)return null;
