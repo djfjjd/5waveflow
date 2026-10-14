@@ -17,7 +17,7 @@ npx wrangler pages dev dist --compatibility-date=2026-10-01
 - Build output: `dist`
 - Node.js: 20 이상
 - Production branch: `main`
-- 환경변수: `BINANCE_API_BASE=https://api.binance.com`
+- 환경변수: `BINANCE_API_BASE=https://data-api.binance.vision`
 - SPA 경로는 Cloudflare Pages의 기본 fallback 동작으로 처리됩니다.
 
 현재 Pages 프로젝트처럼 Build command가 비어 있어도 첫 배포가 가능하도록 검증된 `dist` 산출물을 저장소에 포함합니다. 권장 운영 설정은 Pages의 **Settings → Build → Build configurations**에서 Build command를 `npm run build`로 지정하는 것입니다. 설정 후에는 Cloudflare가 매 배포마다 소스에서 새 산출물을 생성합니다.
@@ -41,7 +41,7 @@ Cloudflare Zero Trust에서 `/admin*`, `/api/admin*`을 보호하는 Access Appl
 - Binance 공개 API 기반 BTC/ETH 24시간 시세 및 OHLCV
 - Lightweight Charts 캔들/거래량/EMA 20·50
 - TradingView 공식 Advanced Chart 임베드 위젯(BTC/USDT 캔들 차트, 종목·시간대 변경)
-- 상단 TradingView 공식 미니 캔들 차트(Binance BTC/USDT 현물, KOSPI, USD/KRW)
+- 상단 TradingView 공식 실시간 숫자 시세(Binance BTC/USDT 현물, KOSPI, USD/KRW)
 - RSI, MACD, EMA, ATR, Bollinger 계산 기반
 - Elliott/Wyckoff는 확정 판정이 아닌 후보 설명만 제공
 - 검증된 모델이 없으므로 상승/횡보/하락 확률은 의도적으로 미표시

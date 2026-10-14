@@ -8,7 +8,7 @@ export const onRequestGet:PagesFunction<Env>=async({request,env})=>{
   const symbol=(u.searchParams.get('symbol')||'BTCUSDT').toUpperCase();
   const interval=u.searchParams.get('interval')||'1h';
   if(!allowedSymbols.has(symbol)||!allowedIntervals.has(interval)) return json({error:'Unsupported symbol or interval'},400);
-  const base=env.BINANCE_API_BASE||'https://api.binance.com';
+  const base=env.BINANCE_API_BASE||'https://data-api.binance.vision';
   try {
     const controller=new AbortController();
     const timer=setTimeout(()=>controller.abort(),8000);
