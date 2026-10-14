@@ -2,7 +2,7 @@ import {useQuery} from '@tanstack/react-query';
 import {BarChart3,BrainCircuit,CalendarDays,Layers3} from 'lucide-react';
 import {useTranslation} from 'react-i18next';
 import {Link} from 'react-router-dom';
-import TradingViewMarketOverview from '../components/TradingViewMarketOverview';
+import TradingViewAnalysisChart from '../components/TradingViewAnalysisChart';
 import TradingViewQuoteCard from '../components/TradingViewQuoteCard';
 import UpbitQuoteCard from '../components/UpbitQuoteCard';
 import {getMarket} from '../lib/api';
@@ -10,7 +10,7 @@ import {getMarket} from '../lib/api';
 export default function Dashboard(){
   const{t,i18n}=useTranslation();
   const symbol='BTCUSDT';
-  const queries=['BTCUSDT','ETHUSDT'].map(s=>useQuery({queryKey:['market',s,'1h'],queryFn:()=>getMarket(s,'1h'),refetchInterval:60_000}));
+  const queries=['BTCUSDT','ETHUSDT'].map(s=>useQuery({queryKey:['market',s,'1h','usdt'],queryFn:()=>getMarket(s,'1h','usdt'),refetchInterval:60_000}));
   const active=queries[symbol==='BTCUSDT'?0:1];
   const directionScores=scenarioScores(active.data);
   const bullish=active.data?directionScores.bullish:null;
@@ -43,7 +43,7 @@ export default function Dashboard(){
       <TradingViewQuoteCard symbol="FX_IDC:USDKRW" title="USD / KRW · Exchange Rate" href="https://www.tradingview.com/symbols/USDKRW/?exchange=FX_IDC"/>
     </section>
 
-    <TradingViewMarketOverview/>
+    <section className="mt-6"><div className="mb-3 flex items-center justify-between"><h2 className="label">BTC / USDT ANALYSIS CHART</h2><Link className="text-[11px] text-primary" to={`/analysis/${symbol}`}>상세 분석 →</Link></div><div className="card overflow-hidden p-2"><TradingViewAnalysisChart symbol={`${active.data?.provider==='Kraken Spot'?'KRAKEN':'BINANCE'}:${symbol}`} interval="1h" market={active.data}/><div className="px-2 pb-1 pt-2 text-right text-[10px] text-neutral">Powered by TradingView Lightweight Charts</div></div></section>
 
     <section className="mt-8"><div className="mb-4 flex items-center justify-between"><h2 className="label">AI {t('probability')} · {t('technical')}</h2><Link className="text-xs text-primary" to={`/analysis/${symbol}`}>상세 분석 →</Link></div><div className="grid grid-cols-4 gap-2 md:gap-4"><ProbabilityCard market={active.data} symbol={symbol}/><PatternCard icon={<Layers3/>} title="Elliott Wave" summary={active.data?.analysis.elliott.scenarios[0]?.label||`${active.data?.analysis.elliott.pivots.filter(pivot=>pivot.confirmed).length??0}개 피벗`} text={active.data?.analysis.elliott.detail||'실제 데이터 대기 중'} symbol={symbol}/><PatternCard icon={<BarChart3/>} title="Wyckoff Phase" summary={active.data?.analysis.wyckoff.phase?`Phase ${active.data.analysis.wyckoff.phase}`:'Trading Range'} text={active.data?.analysis.wyckoff.detail||'실제 데이터 대기 중'} symbol={symbol}/><IndicatorsCard market={active.data} symbol={symbol}/></div></section>
   </main>
