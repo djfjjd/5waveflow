@@ -1,17 +1,24 @@
-import {useEffect,useRef} from 'react';
+import {useEffect,useLayoutEffect,useRef,useState} from 'react';
 import {useTranslation} from 'react-i18next';
 
 export default function TradingViewMarketOverview(){
   const container=useRef<HTMLDivElement>(null);
+  const[chartHeight,setChartHeight]=useState(0);
   const{ i18n }=useTranslation();
   const locale=i18n.resolvedLanguage?.startsWith('ko')?'kr':'en';
 
-  useEffect(()=>{
+  useLayoutEffect(()=>{
     const root=container.current;
     if(!root)return;
-    const chartHeight=window.matchMedia('(min-width: 768px)').matches?720:630;
+    const observer=new ResizeObserver(([entry])=>setChartHeight(Math.round(entry.contentRect.width*9/16)));
+    observer.observe(root);
+    return()=>observer.disconnect();
+  },[]);
+
+  useEffect(()=>{
+    const root=container.current;
+    if(!root||!chartHeight)return;
     root.replaceChildren();
-    root.style.height=`${chartHeight}px`;
     const widget=document.createElement('div');
     widget.className='tradingview-widget-container__widget h-full w-full';
     widget.style.height='100%';
@@ -54,12 +61,12 @@ export default function TradingViewMarketOverview(){
     });
     root.append(widget,script);
     return()=>root.replaceChildren();
-  },[locale]);
+  },[chartHeight,locale]);
 
   return <section className="mt-6">
     <div className="mb-3 flex items-center justify-between"><h2 className="label">TRADINGVIEW CANDLE CHART</h2><span className="text-[11px] text-neutral">Official widget</span></div>
     <div className="card overflow-hidden p-2">
-      <div ref={container} className="tradingview-widget-container h-[630px] w-full md:h-[720px]"/>
+      <div ref={container} className="tradingview-widget-container w-full" style={{aspectRatio:'16 / 9'}}/>
       <div className="px-2 pb-1 text-right text-[10px] text-neutral"><a href="https://www.tradingview.com/symbols/BTCUSDT/" rel="noopener nofollow" target="_blank" className="text-primary hover:underline">BTCUSDT chart</a> by TradingView</div>
     </div>
   </section>
