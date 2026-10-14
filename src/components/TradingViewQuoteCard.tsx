@@ -14,7 +14,7 @@ export default function TradingViewQuoteCard({symbol,title,href}:Props){
     if(!root)return;
     root.replaceChildren();
     const widget=document.createElement('div');
-    widget.className='tradingview-widget-container__widget w-full';
+    widget.className='quote-widget-content tradingview-widget-container__widget w-full';
     const script=document.createElement('script');
     script.src='https://s3.tradingview.com/external-embedding/embed-widget-single-quote.js';
     script.type='text/javascript';
