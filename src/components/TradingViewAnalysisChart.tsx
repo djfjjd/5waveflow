@@ -4,6 +4,7 @@ import {useTranslation} from 'react-i18next';
 type Props={symbol:string;interval:string};
 
 const intervals:Record<string,string>={'15m':'15','30m':'30','1h':'60','4h':'240','1d':'D','1w':'W'};
+const studies=['RSI@tv-basicstudies','MACD@tv-basicstudies','MAExp@tv-basicstudies','BB@tv-basicstudies'];
 
 export default function TradingViewAnalysisChart({symbol,interval}:Props){
   const container=useRef<HTMLDivElement>(null);
@@ -22,7 +23,7 @@ export default function TradingViewAnalysisChart({symbol,interval}:Props){
     const script=document.createElement('script');
     script.src='https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js';
     script.type='text/javascript';script.async=true;
-    script.textContent=JSON.stringify({autosize:false,width:'100%',height,symbol,interval:intervals[interval]??'60',timezone:'Asia/Seoul',theme:'dark',style:'1',locale,backgroundColor:'#151B23',gridColor:'rgba(139, 149, 165, 0.08)',hide_top_toolbar:false,hide_side_toolbar:false,hide_legend:false,hide_volume:false,allow_symbol_change:false,save_image:false,calendar:false,withdateranges:true,support_host:'https://www.tradingview.com'});
+    script.textContent=JSON.stringify({autosize:false,width:'100%',height,symbol,interval:intervals[interval]??'60',timezone:'Asia/Seoul',theme:'dark',style:'1',locale,backgroundColor:'#151B23',gridColor:'rgba(139, 149, 165, 0.08)',hide_top_toolbar:false,hide_side_toolbar:false,hide_legend:false,hide_volume:false,allow_symbol_change:false,save_image:false,calendar:false,withdateranges:true,studies,studies_overrides:{'moving average exponential.length':20,'bollinger bands.length':20,'bollinger bands.mult':2},support_host:'https://www.tradingview.com'});
     root.append(widget,script);
     return()=>root.replaceChildren();
   },[height,interval,locale,symbol]);
