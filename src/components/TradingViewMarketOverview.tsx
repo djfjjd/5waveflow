@@ -9,15 +9,21 @@ export default function TradingViewMarketOverview(){
   useEffect(()=>{
     const root=container.current;
     if(!root)return;
+    const chartHeight=window.matchMedia('(min-width: 768px)').matches?1440:1260;
     root.replaceChildren();
+    root.style.height=`${chartHeight}px`;
     const widget=document.createElement('div');
     widget.className='tradingview-widget-container__widget h-full w-full';
+    widget.style.height='100%';
+    widget.style.width='100%';
     const script=document.createElement('script');
     script.src='https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js';
     script.type='text/javascript';
     script.async=true;
     script.textContent=JSON.stringify({
-      autosize:true,
+      autosize:false,
+      width:'100%',
+      height:chartHeight,
       symbol:'BINANCE:BTCUSDT',
       interval:'60',
       timezone:'Asia/Seoul',
