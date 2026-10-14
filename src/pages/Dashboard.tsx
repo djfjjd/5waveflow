@@ -43,7 +43,6 @@ export default function Dashboard(){
     <TradingViewMarketOverview/>
 
     <section className="mt-8"><div className="mb-4 flex items-center justify-between"><h2 className="label">AI {t('probability')} · {t('technical')}</h2><Link className="text-xs text-primary" to={`/analysis/${symbol}`}>상세 분석 →</Link></div><div className="grid grid-cols-4 gap-2 md:gap-4"><ProbabilityCard market={active.data} symbol={symbol}/><PatternCard icon={<Layers3/>} title="Elliott Wave" summary={active.data?.analysis.elliott.scenarios[0]?.label||`${active.data?.analysis.elliott.pivots.filter(pivot=>pivot.confirmed).length??0}개 피벗`} text={active.data?.analysis.elliott.detail||'실제 데이터 대기 중'} symbol={symbol}/><PatternCard icon={<BarChart3/>} title="Wyckoff Phase" summary={active.data?.analysis.wyckoff.phase?`Phase ${active.data.analysis.wyckoff.phase}`:'Trading Range'} text={active.data?.analysis.wyckoff.detail||'실제 데이터 대기 중'} symbol={symbol}/><IndicatorsCard market={active.data} symbol={symbol}/></div></section>
-    <section className="card mt-8 flex flex-col justify-between gap-4 p-6 sm:flex-row sm:items-center"><div><div className="label">PREDICTION HISTORY</div><p className="mt-2 text-sm text-neutral">검증 가능한 예측 기록과 모델 성능은 모델 학습 이후 제공됩니다.</p></div><Link to="/history" className="rounded-lg border border-[#354252] px-4 py-2 text-center text-sm">검증 상태 보기</Link></section>
   </main>
 }
 

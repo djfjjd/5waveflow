@@ -13,12 +13,14 @@ export const onRequestGet:PagesFunction<Env>=async({request,env})=>{
   const url=new URL(request.url);
   const symbol=(url.searchParams.get('symbol')||'BTCUSDT').toUpperCase();
   const interval=url.searchParams.get('interval')||'1h';
+  const market=url.searchParams.get('market');
   const stockSymbol=/^(KRX|NASDAQ|NYSE):[A-Z0-9.\-]+$/.test(symbol);
   if((!allowedSymbols.has(symbol)&&!stockSymbol)||!allowedIntervals.has(interval))return json({error:'Unsupported symbol or interval'},400);
   try{
     let data:ProviderData;
     if(stockSymbol)data=await fetchYahoo(symbol,interval);
-    else try{data=await fetchBinance(env.BINANCE_API_BASE||'https://data-api.binance.vision',symbol,interval)}catch{data=await fetchUpbit(symbol,interval)}
+    else if(market==='binance')data=await fetchBinanceMarket(env.BINANCE_API_BASE,symbol,interval);
+    else try{data=await fetchBinanceMarket(env.BINANCE_API_BASE,symbol,interval)}catch{data=await fetchUpbit(symbol,interval)}
     const closedCandles=onlyClosedCandles(data.candles,interval,Date.now());
     if(closedCandles.length<50)throw new Error('Insufficient closed candles');
     const updatedAt=new Date().toISOString();
@@ -28,6 +30,13 @@ export const onRequestGet:PagesFunction<Env>=async({request,env})=>{
     return json({symbol,interval,provider:data.provider,quoteCurrency:data.quoteCurrency,ticker:{symbol,price:data.ticker.price,changePercent:data.ticker.changePercent,volume:data.ticker.volume,high:data.ticker.high,low:data.ticker.low,updatedAt},candles:data.candles,indicators:indicators(closedCandles),analysisTime:interval,updatedAt,dataTimestamp:new Date(lastClosed.time*1000).toISOString(),dataStatus,dataPoints:closedCandles.length,currentCandleComplete:closedCandles.length===data.candles.length,analysis:analyzePatterns(closedCandles),probability:null,probabilityStatus:'unavailable'},200,{'Cache-Control':'public, max-age=30, s-maxage=30'});
   }catch(error){return json({error:'Market data provider unavailable',detail:error instanceof Error?error.message:'Unknown error'},502)}
 };
+
+async function fetchBinanceMarket(configuredBase:string|undefined,symbol:string,interval:string){
+  const bases=[configuredBase,'https://data-api.binance.vision','https://api.binance.com','https://api1.binance.com'].filter((base,index,all):base is string=>Boolean(base)&&all.indexOf(base)===index);
+  let lastError:unknown;
+  for(const base of bases)try{return await fetchBinance(base,symbol,interval)}catch(error){lastError=error}
+  throw lastError instanceof Error?lastError:new Error('Binance Spot unavailable');
+}
 
 async function fetchBinance(base:string,symbol:string,interval:string):Promise<ProviderData>{
   const controller=new AbortController();
