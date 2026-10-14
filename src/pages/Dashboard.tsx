@@ -14,6 +14,7 @@ export default function Dashboard(){
   const active=queries[symbol==='BTCUSDT'?0:1];
   const directionScores=scenarioScores(active.data);
   const bullish=active.data?directionScores.bullish:null;
+  const sideways=active.data?directionScores.sideways:null;
   const bearish=active.data?directionScores.bearish:null;
   const today=new Intl.DateTimeFormat('ko-KR',{year:'numeric',month:'long',day:'numeric',weekday:'long'}).format(new Date());
 
@@ -23,9 +24,11 @@ export default function Dashboard(){
         <div className="mb-2 flex items-center gap-2 text-xs text-neutral"><CalendarDays size={14}/><span>{t('today')}</span><span className="h-1.5 w-1.5 animate-pulse rounded-full bg-bullish"/></div>
         <h1 className="text-2xl font-semibold tracking-tight tabular-nums md:text-4xl">{today}</h1>
       </div>
-      <div className="flex items-center gap-4 rounded-xl border border-[#26303d] bg-surface/70 px-4 py-3 text-sm tabular-nums">
+      <div className="flex items-center gap-2 rounded-xl border border-[#26303d] bg-surface/70 px-3 py-3 text-xs tabular-nums sm:gap-4 sm:px-4 sm:text-sm">
         <span className="text-neutral">{t('marketDirection')} · 정량</span>
         <span className="text-bullish">{t('bullish')} <strong>{bullish===null?'—':bullish}%</strong></span>
+        <span className="h-4 w-px bg-[#35404d]"/>
+        <span className="text-neutral">횡보 <strong className="text-white">{sideways===null?'—':sideways}%</strong></span>
         <span className="h-4 w-px bg-[#35404d]"/>
         <span className="text-bearish">{t('bearish')} <strong>{bearish===null?'—':bearish}%</strong></span>
       </div>
