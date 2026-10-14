@@ -10,7 +10,11 @@ export default function TradingViewMarketOverview(){
   useLayoutEffect(()=>{
     const root=container.current;
     if(!root)return;
-    const observer=new ResizeObserver(([entry])=>setChartHeight(Math.round(entry.contentRect.width*9/16)));
+    const observer=new ResizeObserver(([entry])=>{
+      const width=entry.contentRect.width;
+      const mobile=window.matchMedia('(max-width: 767px)').matches;
+      setChartHeight(Math.round(mobile?width:width*9/16));
+    });
     observer.observe(root);
     return()=>observer.disconnect();
   },[]);
@@ -66,7 +70,7 @@ export default function TradingViewMarketOverview(){
   return <section className="mt-6">
     <div className="mb-3 flex items-center justify-between"><h2 className="label">TRADINGVIEW CANDLE CHART</h2><span className="text-[11px] text-neutral">Official widget</span></div>
     <div className="card overflow-hidden p-2">
-      <div ref={container} className="tradingview-widget-container w-full" style={{aspectRatio:'16 / 9'}}/>
+      <div ref={container} className="tradingview-widget-container aspect-square w-full md:aspect-video"/>
       <div className="px-2 pb-1 text-right text-[10px] text-neutral"><a href="https://www.tradingview.com/symbols/BTCUSDT/" rel="noopener nofollow" target="_blank" className="text-primary hover:underline">BTCUSDT chart</a> by TradingView</div>
     </div>
   </section>
