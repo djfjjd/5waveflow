@@ -6,7 +6,7 @@ type Candle={time:number;open:number;high:number;low:number;close:number;volume:
 type ProviderData={provider:'Binance Spot'|'Upbit KRW';quoteCurrency:'USDT'|'KRW';ticker:{price:number;changePercent:number;volume:number;high:number;low:number};candles:Candle[]};
 type UpbitCandle={candle_date_time_utc:string;opening_price:number;high_price:number;low_price:number;trade_price:number;candle_acc_trade_volume:number};
 type UpbitTicker={trade_price:number;signed_change_rate:number;acc_trade_price_24h:number;high_price:number;low_price:number};
-const allowedSymbols=new Set(['BTCUSDT','ETHUSDT']);
+const allowedSymbols=new Set(['BTCUSDT','ETHUSDT','SOLUSDT','XRPUSDT']);
 const allowedIntervals=new Set(['1m','5m','15m','30m','1h','4h','1d','1w']);
 
 export const onRequestGet:PagesFunction<Env>=async({request,env})=>{

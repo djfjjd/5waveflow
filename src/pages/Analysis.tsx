@@ -1,7 +1,7 @@
 import {useQuery} from '@tanstack/react-query';
 import {useState} from 'react';
-import {useParams} from 'react-router-dom';
-import MarketChart from '../components/MarketChart';
+import {useNavigate,useParams} from 'react-router-dom';
+import TradingViewAnalysisChart from '../components/TradingViewAnalysisChart';
 import {getMarket} from '../lib/api';
 import type {IndicatorSnapshot,MarketPayload} from '../types';
 
@@ -9,16 +9,16 @@ const analysisFrames=['1d','4h','1h','30m','15m'] as const;
 
 export default function Analysis(){
   const{symbol='BTCUSDT'}=useParams();
+  const navigate=useNavigate();
   const[interval,setInterval]=useState('1h');
-  const[ema20,setEma20]=useState(true),[ema50,setEma50]=useState(true),[ema200,setEma200]=useState(false),[bollinger,setBollinger]=useState(false);
   const query=useQuery({queryKey:['market',symbol,interval],queryFn:()=>getMarket(symbol,interval)});
   const frameQuery=useQuery({queryKey:['market-multiframe',symbol],queryFn:async()=>{const results:(MarketPayload|undefined)[]=[];for(const frame of analysisFrames)results.push(await getMarket(symbol,frame).catch(()=>undefined));return results},staleTime:60_000});
   const multiFrame=buildMultiFrame(frameQuery.data??[]);
   return <main className="mx-auto max-w-[1440px] px-4 py-8 md:px-8">
-    <div className="mb-6"><div className="label">ASSET ANALYSIS</div><h1 className="mt-2 text-3xl font-semibold">{symbol.replace('USDT',` / ${query.data?.quoteCurrency??'USDT'}`)}</h1></div>
-    <div className="mb-4 flex flex-wrap gap-2">{['15m','30m','1h','4h','1d','1w'].map(value=><button key={value} onClick={()=>setInterval(value)} className={`rounded-lg px-3 py-2 text-xs ${value===interval?'bg-primary':'bg-surface text-neutral'}`}>{value}</button>)}<Toggle label="EMA 20" value={ema20} set={setEma20}/><Toggle label="EMA 50" value={ema50} set={setEma50}/><Toggle label="EMA 200" value={ema200} set={setEma200}/><Toggle label="Bollinger 20,2" value={bollinger} set={setBollinger}/></div>
+    <div className="mb-6 flex flex-wrap items-end justify-between gap-4"><div><div className="label">ASSET ANALYSIS</div><h1 className="mt-2 text-3xl font-semibold">{symbol.replace('USDT',` / ${query.data?.quoteCurrency??'USDT'}`)}</h1></div><label className="text-xs text-neutral">분석 종목<select value={symbol} onChange={event=>navigate(`/analysis/${event.target.value}`)} className="ml-2 rounded-lg border border-[#303b48] bg-surface px-3 py-2 text-sm text-white"><option value="BTCUSDT">BTC</option><option value="ETHUSDT">ETH</option><option value="SOLUSDT">SOL</option><option value="XRPUSDT">XRP</option></select></label></div>
+    <div className="mb-4 flex flex-wrap gap-2">{['15m','30m','1h','4h','1d','1w'].map(value=><button key={value} onClick={()=>setInterval(value)} className={`rounded-lg px-3 py-2 text-xs ${value===interval?'bg-primary':'bg-surface text-neutral'}`}>{value}</button>)}</div>
 
-    <section className="card overflow-hidden p-3">{query.data?<MarketChart candles={query.data.candles} ema20={ema20} ema50={ema50} ema200={ema200} bollinger={bollinger}/>:<div className="grid h-[410px] place-items-center text-neutral">{query.isError?'시장 데이터 오류':'불러오는 중…'}</div>}</section>
+    <section className="card overflow-hidden p-2">{query.data?<TradingViewAnalysisChart symbol={tradingViewSymbol(symbol,query.data.quoteCurrency)} interval={interval}/>:<div className="grid h-[410px] place-items-center text-neutral">{query.isError?'시장 데이터 오류':'불러오는 중…'}</div>}<div className="px-2 pb-1 pt-2 text-right text-[10px] text-neutral">Official chart by TradingView</div></section>
 
     <section className="mt-5 grid grid-cols-3 gap-2 md:gap-5">
       <ElliottDetails market={query.data} multiFrame={multiFrame}/>
@@ -41,6 +41,6 @@ function DataBasis({market}:{market:MarketPayload}){return <div className="card 
 type MultiFrame={summary:string;details:string};
 function buildMultiFrame(markets:(MarketPayload|undefined)[]):MultiFrame{let bullish=0,bearish=0,available=0;const details=analysisFrames.map((frame,index)=>{const scenario=markets[index]?.analysis.elliott.scenarios[0];if(!scenario)return`${frame}: 판정 불가`;available++;if(scenario.direction==='bullish')bullish++;else bearish++;return`${frame}: ${scenario.direction==='bullish'?'상승':'하락'} ${scenario.pattern}`});const direction=!available?'다중 시간대 판정 불가':bullish===bearish?'상승·하락 혼조':bullish>bearish?'다중 시간대 상승 우세':'다중 시간대 하락 우세';return{summary:`${direction} (${available}/${analysisFrames.length})`,details:details.join(' · ')}}
 function statusLabel(status:'confirmed'|'developing'|'unavailable'){return status==='confirmed'?'확정':status==='developing'?'진행 중':'판정 불가'}
-function Toggle({label,value,set}:{label:string;value:boolean;set:(value:boolean)=>void}){return <button onClick={()=>set(!value)} className={`rounded-lg border px-3 py-2 text-xs ${value?'border-primary text-primary':'border-[#303b48] text-neutral'}`}>{label}</button>}
+function tradingViewSymbol(symbol:string,quoteCurrency:'USDT'|'KRW'){const asset=symbol.replace('USDT','');return quoteCurrency==='KRW'?`UPBIT:${asset}KRW`:`BINANCE:${asset}USDT`}
 function NumberStat({n,value}:{n:string;value:number|null}){return <Stat n={n} value={value==null?'데이터 부족':value.toFixed(2)}/>}
 function Stat({n,value}:{n:string;value:string}){return <div className="min-w-0"><dt className="text-neutral">{n}</dt><dd className="mt-1 break-words font-medium tabular-nums">{value}</dd></div>}
