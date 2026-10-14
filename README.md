@@ -38,7 +38,7 @@ Cloudflare Zero Trust에서 `/admin*`, `/api/admin*`을 보호하는 Access Appl
 
 ## Current scope
 
-- Binance 공개 시장 데이터 API 기반 BTC/ETH 24시간 시세 및 최근 500개 OHLCV
+- Binance 공개 시장 데이터 API 기반 BTC/ETH 24시간 시세 및 최근 500개 OHLCV, Cloudflare 환경에서 Binance가 차단될 경우 Upbit KRW OHLCV 자동 폴백
 - 실제 캔들 기반 RSI(14), MACD(12,26,9), EMA(20·50·200), Bollinger(20,2), ATR(14), 거래량 MA(20)
 - Lightweight Charts 캔들·거래량 및 EMA 20·50·200/Bollinger 선택 오버레이
 - TradingView 공식 Advanced Chart 임베드 위젯(BTC/USDT 캔들 차트, 종목·시간대 변경)

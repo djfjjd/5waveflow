@@ -14,14 +14,14 @@ export default function Analysis(){
   const[bollinger,setBollinger]=useState(false);
   const query=useQuery({queryKey:['market',symbol,interval],queryFn:()=>getMarket(symbol,interval)});
   return <main className="mx-auto max-w-[1440px] px-4 py-8 md:px-8">
-    <div className="mb-6"><div className="label">ASSET ANALYSIS</div><h1 className="mt-2 text-3xl font-semibold">{symbol.replace('USDT',' / USDT')}</h1></div>
+    <div className="mb-6"><div className="label">ASSET ANALYSIS</div><h1 className="mt-2 text-3xl font-semibold">{symbol.replace('USDT',` / ${query.data?.quoteCurrency??'USDT'}`)}</h1></div>
     <div className="mb-4 flex flex-wrap gap-2">
       {['1m','5m','15m','1h','4h','1d'].map(value=><button key={value} onClick={()=>setInterval(value)} className={`rounded-lg px-3 py-2 text-xs ${value===interval?'bg-primary':'bg-surface text-neutral'}`}>{value}</button>)}
       <Toggle label="EMA 20" value={ema20} set={setEma20}/><Toggle label="EMA 50" value={ema50} set={setEma50}/><Toggle label="EMA 200" value={ema200} set={setEma200}/><Toggle label="Bollinger 20,2" value={bollinger} set={setBollinger}/>
     </div>
     <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_360px]">
       <div className="card overflow-hidden p-3">{query.data?<MarketChart candles={query.data.candles} ema20={ema20} ema50={ema50} ema200={ema200} bollinger={bollinger}/>:<div className="grid h-[410px] place-items-center text-neutral">{query.isError?'시장 데이터 오류':'불러오는 중…'}</div>}</div>
-      <aside className="space-y-4"><IndicatorDetails indicators={query.data?.indicators}/>{query.data&&<div className="card p-5"><div className="label">DATA BASIS</div><dl className="mt-4 grid grid-cols-2 gap-4 text-sm"><Stat n="분석 기준" value={query.data.analysisTime}/><Stat n="캔들 수" value={`${query.data.dataPoints}개`}/><Stat n="데이터 공급자" value="Binance Spot"/><Stat n="갱신 시각" value={new Intl.DateTimeFormat('ko-KR',{dateStyle:'short',timeStyle:'medium'}).format(new Date(query.data.updatedAt))}/></dl></div>}<div className="card p-5"><div className="label">PROBABILITY</div><p className="mt-3 text-sm leading-6 text-neutral">검증·보정된 모델이 배포되기 전까지 수치형 확률을 제공하지 않습니다.</p></div></aside>
+      <aside className="space-y-4"><IndicatorDetails indicators={query.data?.indicators}/>{query.data&&<div className="card p-5"><div className="label">DATA BASIS</div><dl className="mt-4 grid grid-cols-2 gap-4 text-sm"><Stat n="분석 기준" value={query.data.analysisTime}/><Stat n="캔들 수" value={`${query.data.dataPoints}개`}/><Stat n="데이터 공급자" value={query.data.provider}/><Stat n="갱신 시각" value={new Intl.DateTimeFormat('ko-KR',{dateStyle:'short',timeStyle:'medium'}).format(new Date(query.data.updatedAt))}/></dl></div>}<div className="card p-5"><div className="label">PROBABILITY</div><p className="mt-3 text-sm leading-6 text-neutral">검증·보정된 모델이 배포되기 전까지 수치형 확률을 제공하지 않습니다.</p></div></aside>
     </div>
   </main>;
 }
