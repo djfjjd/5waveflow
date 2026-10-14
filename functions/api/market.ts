@@ -23,7 +23,8 @@ export const onRequestGet:PagesFunction<Env>=async({request,env})=>{
     if(closedCandles.length<50)throw new Error('Insufficient closed candles');
     const updatedAt=new Date().toISOString();
     const lastClosed=closedCandles.at(-1)!;
-    const dataStatus=Date.now()-(lastClosed.time+intervalSeconds(interval))*1000>intervalSeconds(interval)*2000?'stale':'fresh';
+    const staleAfterSeconds=data.provider==='Yahoo Finance'?Math.max(intervalSeconds(interval)*2,3*86400):intervalSeconds(interval)*2;
+    const dataStatus=Date.now()-(lastClosed.time+intervalSeconds(interval))*1000>staleAfterSeconds*1000?'stale':'fresh';
     return json({symbol,interval,provider:data.provider,quoteCurrency:data.quoteCurrency,ticker:{symbol,price:data.ticker.price,changePercent:data.ticker.changePercent,volume:data.ticker.volume,high:data.ticker.high,low:data.ticker.low,updatedAt},candles:data.candles,indicators:indicators(closedCandles),analysisTime:interval,updatedAt,dataTimestamp:new Date(lastClosed.time*1000).toISOString(),dataStatus,dataPoints:closedCandles.length,currentCandleComplete:closedCandles.length===data.candles.length,analysis:analyzePatterns(closedCandles),probability:null,probabilityStatus:'unavailable'},200,{'Cache-Control':'public, max-age=30, s-maxage=30'});
   }catch(error){return json({error:'Market data provider unavailable',detail:error instanceof Error?error.message:'Unknown error'},502)}
 };
