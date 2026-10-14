@@ -37,7 +37,7 @@ export default function Dashboard(){
 
     <section className="grid gap-4 lg:grid-cols-3">
       <TradingViewQuoteCard symbol="BINANCE:BTCUSDT" title="BTC / USDT · Binance Spot" href="https://www.tradingview.com/symbols/BTCUSDT/?exchange=BINANCE"/>
-      <TradingViewQuoteCard symbol="TVC:KOSPI" title="KOSPI Composite Index" href="https://www.tradingview.com/symbols/TVC-KOSPI/"/>
+      <TradingViewQuoteCard symbol="UPBIT:BTCKRW" title="BTC / KRW · Upbit" href="https://www.tradingview.com/symbols/BTCKRW/?exchange=UPBIT"/>
       <TradingViewQuoteCard symbol="FX_IDC:USDKRW" title="USD / KRW · Exchange Rate" href="https://www.tradingview.com/symbols/USDKRW/?exchange=FX_IDC"/>
     </section>
 
