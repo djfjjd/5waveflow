@@ -1,47 +1,39 @@
-import {useEffect,useLayoutEffect,useRef,useState} from 'react';
-import {useTranslation} from 'react-i18next';
+import {CandlestickSeries,ColorType,LineSeries,LineStyle,createChart,createSeriesMarkers,type SeriesMarker,type UTCTimestamp} from 'lightweight-charts';
+import {useEffect,useRef} from 'react';
+import {rsi} from '../lib/indicators';
 import type {MarketPayload} from '../types';
 
 type Props={symbol:string;interval:string;market?:MarketPayload};
 
-const intervals:Record<string,string>={'15m':'15','30m':'30','1h':'60','4h':'240','1d':'D','1w':'W'};
-const studies=[{id:'RSI@tv-basicstudies',inputs:{length:14}}];
-
 export default function TradingViewAnalysisChart({symbol,interval,market}:Props){
   const container=useRef<HTMLDivElement>(null);
-  const[height,setHeight]=useState(0);
-  const{i18n}=useTranslation();
-  const locale=i18n.resolvedLanguage?.startsWith('ko')?'kr':'en';
-
-  useLayoutEffect(()=>{const root=container.current;if(!root)return;const observer=new ResizeObserver(([entry])=>setHeight(Math.round(entry.contentRect.width*(window.matchMedia('(max-width: 767px)').matches?1:9/16))));observer.observe(root);return()=>observer.disconnect()},[]);
   useEffect(()=>{
     const root=container.current;
-    if(!root||!height)return;
-    root.replaceChildren();
-    const widget=document.createElement('div');
-    widget.className='tradingview-widget-container__widget h-full w-full';
-    widget.style.height='100%';
-    const script=document.createElement('script');
-    script.src='https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js';
-    script.type='text/javascript';script.async=true;
-    script.textContent=JSON.stringify({autosize:false,width:'100%',height,symbol,interval:intervals[interval]??'60',timezone:'Asia/Seoul',theme:'dark',style:'1',locale,backgroundColor:'#151B23',gridColor:'rgba(139, 149, 165, 0.08)',hide_top_toolbar:false,hide_side_toolbar:false,hide_legend:false,hide_volume:true,allow_symbol_change:false,save_image:false,calendar:false,withdateranges:true,studies,support_host:'https://www.tradingview.com'});
-    root.append(widget,script);
-    return()=>root.replaceChildren();
-  },[height,interval,locale,symbol]);
-  return <div className="relative"><div ref={container} className="tradingview-widget-container aspect-square w-full md:aspect-video"/><AnalysisMarkers market={market}/></div>;
-}
+    if(!root||!market?.candles.length)return;
+    const getHeight=()=>Math.round(root.clientWidth*(window.matchMedia('(max-width: 767px)').matches?1:9/16));
+    const chart=createChart(root,{width:root.clientWidth,height:getHeight(),layout:{background:{type:ColorType.Solid,color:'#151b23'},textColor:'#8b95a5',attributionLogo:true},grid:{vertLines:{color:'rgba(139,149,165,.08)'},horzLines:{color:'rgba(139,149,165,.08)'}},rightPriceScale:{borderColor:'#27313d'},timeScale:{borderColor:'#27313d',timeVisible:true,secondsVisible:false},handleScroll:{mouseWheel:true,pressedMouseMove:true,horzTouchDrag:true,vertTouchDrag:true},handleScale:{axisPressedMouseMove:true,mouseWheel:true,pinch:true},crosshair:{vertLine:{color:'#4f8cff'},horzLine:{color:'#4f8cff'}}});
+    const candles=market.candles;
+    const series=chart.addSeries(CandlestickSeries,{upColor:'#00c896',downColor:'#ff5c70',borderVisible:false,wickUpColor:'#00c896',wickDownColor:'#ff5c70'});
+    series.setData(candles.map(candle=>({time:candle.time as UTCTimestamp,open:candle.open,high:candle.high,low:candle.low,close:candle.close})));
 
-function AnalysisMarkers({market}:{market:MarketPayload|undefined}){
-  if(!market)return null;
-  const candles=market.candles,scenario=market.analysis.elliott.scenarios[0];
-  const start=Math.max(0,candles.length-160),visible=candles.slice(start);
-  if(!visible.length)return null;
-  const high=Math.max(...visible.map(candle=>candle.high)),low=Math.min(...visible.map(candle=>candle.low)),range=Math.max(high-low,Number.EPSILON);
-  const position=(index:number,price:number)=>({left:`${8+((index-start)/Math.max(visible.length-1,1))*82}%`,top:`${16+((high-price)/range)*54}%`});
-  const waves=scenario?scenario.pivotIndexes.flatMap((index,labelIndex)=>{const pivot=market.analysis.elliott.pivots.find(value=>value.index===index);return index>=start&&pivot?[{key:`wave-${index}`,index,price:pivot.price,label:scenario.waveLabels[labelIndex]}]:[]}):[];
-  const events=market.analysis.wyckoff.events.filter(event=>event.index>=start&&event.index<candles.length).slice(-8);
-  return <div className="pointer-events-none absolute inset-0 z-10 overflow-hidden">
-    {waves.map(marker=><span key={marker.key} style={position(marker.index,marker.price)} className="absolute -translate-x-1/2 -translate-y-1/2 rounded-full border border-primary bg-[#0d131b]/95 px-1.5 py-0.5 text-[9px] font-bold leading-none text-primary shadow-lg md:px-2 md:py-1 md:text-xs">{marker.label}</span>)}
-    {events.map(event=><span key={`${event.type}-${event.index}`} style={position(event.index,event.price)} className="absolute -translate-x-1/2 translate-y-2 rounded border border-[#f5b942]/70 bg-[#0d131b]/95 px-1 py-0.5 text-[8px] font-semibold leading-none text-[#f5b942] shadow-lg md:px-1.5 md:py-1 md:text-[10px]">{event.type}</span>)}
-  </div>
+    const closes=candles.map(candle=>candle.close);
+    const rsiSeries=chart.addSeries(LineSeries,{color:'#9b87f5',lineWidth:2,priceLineVisible:false,lastValueVisible:true,priceFormat:{type:'price',precision:1,minMove:.1}},1);
+    rsiSeries.setData(candles.flatMap((candle,index)=>{const value=rsi(closes.slice(0,index+1));return value==null?[]:[{time:candle.time as UTCTimestamp,value}]}));
+    rsiSeries.createPriceLine({price:70,color:'rgba(255,92,112,.45)',lineWidth:1,lineStyle:LineStyle.Dashed,axisLabelVisible:false,title:'RSI 70'});
+    rsiSeries.createPriceLine({price:30,color:'rgba(0,200,150,.45)',lineWidth:1,lineStyle:LineStyle.Dashed,axisLabelVisible:false,title:'RSI 30'});
+
+    const scenario=market.analysis.elliott.scenarios[0];
+    const markers:SeriesMarker<UTCTimestamp>[]=[];
+    if(scenario)scenario.pivotIndexes.forEach((index,labelIndex)=>{const pivot=market.analysis.elliott.pivots.find(value=>value.index===index),candle=candles[index];if(pivot&&candle)markers.push({id:`wave-${index}`,time:candle.time as UTCTimestamp,position:'atPriceMiddle',price:pivot.price,shape:'circle',color:'#4f8cff',text:scenario.waveLabels[labelIndex],size:1.25})});
+    market.analysis.wyckoff.events.forEach(event=>{const candle=candles[event.index];if(candle)markers.push({id:`wyckoff-${event.type}-${event.index}`,time:candle.time as UTCTimestamp,position:'atPriceMiddle',price:event.price,shape:'square',color:'#f5b942',text:event.type,size:1})});
+    markers.sort((a,b)=>(a.time as number)-(b.time as number));
+    createSeriesMarkers(series,markers,{zOrder:'top',autoScale:true});
+
+    chart.timeScale().setVisibleLogicalRange({from:Math.max(0,candles.length-140),to:candles.length+5});
+    const observer=new ResizeObserver(()=>chart.applyOptions({width:root.clientWidth,height:getHeight()}));
+    observer.observe(root);
+    return()=>{observer.disconnect();chart.remove()};
+  },[interval,market,symbol]);
+
+  return <div className="relative aspect-square w-full md:aspect-video"><div ref={container} className="absolute inset-0"/>{!market&&<div className="absolute inset-0 grid place-items-center text-xs text-neutral">차트 데이터를 불러오는 중입니다.</div>}<div className="pointer-events-none absolute left-3 top-3 rounded bg-[#0d131b]/80 px-2 py-1 text-[10px] font-medium text-neutral">{symbol.replace(':',' · ')} · {interval}</div></div>;
 }
