@@ -39,7 +39,7 @@ export default function TradingViewMiniChart({symbol,title,interval='60',href}:P
 
   return <article className="card min-w-0 overflow-hidden">
     <div className="flex items-center justify-between border-b border-[#25303c] px-4 py-3"><h2 className="text-sm font-semibold">{title}</h2><span className="text-[10px] text-neutral">TradingView</span></div>
-    <div ref={ref} className="tradingview-widget-container h-[280px] w-full"/>
+    <div ref={ref} className="tradingview-widget-container h-[140px] w-full"/>
     <div className="px-3 py-2 text-right text-[10px] text-neutral"><a href={href} rel="noopener nofollow" target="_blank" className="text-primary hover:underline">전체 차트</a> by TradingView</div>
   </article>
 }

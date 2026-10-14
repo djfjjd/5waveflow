@@ -39,7 +39,7 @@ export default function Dashboard(){
 
     <section className="grid gap-4 lg:grid-cols-3">
       <TradingViewMiniChart symbol="BINANCE:BTCUSDT" title="BTC / USDT · Binance Spot" href="https://www.tradingview.com/symbols/BTCUSDT/?exchange=BINANCE"/>
-      <TradingViewMiniChart symbol="KRX:KOSPI" title="KOSPI · Korea Exchange" interval="D" href="https://www.tradingview.com/symbols/KRX-KOSPI/"/>
+      <TradingViewMiniChart symbol="KRX:KOSPI" title="KOSPI Composite Index" interval="D" href="https://www.tradingview.com/symbols/KRX-KOSPI/"/>
       <TradingViewMiniChart symbol="FX_IDC:USDKRW" title="USD / KRW · Exchange Rate" href="https://www.tradingview.com/symbols/USDKRW/?exchange=FX_IDC"/>
     </section>
 
