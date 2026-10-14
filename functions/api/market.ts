@@ -3,7 +3,7 @@ import {analyzePatterns} from '../../src/lib/patterns';
 
 interface Env { BINANCE_API_BASE?: string }
 type Candle={time:number;open:number;high:number;low:number;close:number;volume:number};
-type ProviderData={provider:'Binance Spot'|'Upbit KRW';quoteCurrency:'USDT'|'KRW';ticker:{price:number;changePercent:number;volume:number;high:number;low:number};candles:Candle[]};
+type ProviderData={provider:'Binance Spot'|'Upbit KRW'|'Yahoo Finance';quoteCurrency:'USDT'|'KRW'|'USD';ticker:{price:number;changePercent:number;volume:number;high:number;low:number};candles:Candle[]};
 type UpbitCandle={candle_date_time_utc:string;opening_price:number;high_price:number;low_price:number;trade_price:number;candle_acc_trade_volume:number};
 type UpbitTicker={trade_price:number;signed_change_rate:number;acc_trade_price_24h:number;high_price:number;low_price:number};
 const allowedSymbols=new Set(['BTCUSDT','ETHUSDT','SOLUSDT','XRPUSDT']);
@@ -13,11 +13,12 @@ export const onRequestGet:PagesFunction<Env>=async({request,env})=>{
   const url=new URL(request.url);
   const symbol=(url.searchParams.get('symbol')||'BTCUSDT').toUpperCase();
   const interval=url.searchParams.get('interval')||'1h';
-  if(!allowedSymbols.has(symbol)||!allowedIntervals.has(interval))return json({error:'Unsupported symbol or interval'},400);
+  const stockSymbol=/^(KRX|NASDAQ|NYSE):[A-Z0-9.\-]+$/.test(symbol);
+  if((!allowedSymbols.has(symbol)&&!stockSymbol)||!allowedIntervals.has(interval))return json({error:'Unsupported symbol or interval'},400);
   try{
     let data:ProviderData;
-    try{data=await fetchBinance(env.BINANCE_API_BASE||'https://data-api.binance.vision',symbol,interval)}
-    catch{data=await fetchUpbit(symbol,interval)}
+    if(stockSymbol)data=await fetchYahoo(symbol,interval);
+    else try{data=await fetchBinance(env.BINANCE_API_BASE||'https://data-api.binance.vision',symbol,interval)}catch{data=await fetchUpbit(symbol,interval)}
     const closedCandles=onlyClosedCandles(data.candles,interval,Date.now());
     if(closedCandles.length<50)throw new Error('Insufficient closed candles');
     const updatedAt=new Date().toISOString();
@@ -61,6 +62,29 @@ async function fetchUpbit(symbol:string,interval:string):Promise<ProviderData>{
   if(!ticker||candles.length<200)throw new Error('Insufficient Upbit market data');
   return{provider:'Upbit KRW',quoteCurrency:'KRW',ticker:{price:ticker.trade_price,changePercent:ticker.signed_change_rate*100,volume:ticker.acc_trade_price_24h,high:ticker.high_price,low:ticker.low_price},candles};
 }
+
+type YahooChart={chart:{result:Array<{meta:{regularMarketPrice?:number;chartPreviousClose?:number;previousClose?:number;regularMarketDayHigh?:number;regularMarketDayLow?:number;currency?:string};timestamp:number[];indicators:{quote:Array<{open:Array<number|null>;high:Array<number|null>;low:Array<number|null>;close:Array<number|null>;volume:Array<number|null>}>}}> | null;error:unknown}};
+async function fetchYahoo(symbol:string,interval:string):Promise<ProviderData>{
+  const[exchange,ticker]=symbol.split(':');
+  const yahooSymbol=exchange==='KRX'?`${ticker}.KS`:ticker;
+  const requestInterval=interval==='4h'?'60m':({ '1m':'5m','5m':'5m','15m':'15m','30m':'30m','1h':'60m','1d':'1d','1w':'1wk' } as Record<string,string>)[interval];
+  const range=interval==='1d'?'5y':interval==='1w'?'10y':interval==='4h'||interval==='1h'?'730d':'60d';
+  const response=await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(yahooSymbol)}?interval=${requestInterval}&range=${range}`,{headers:{accept:'application/json','user-agent':'Mozilla/5.0 5WaveFlow/1.0'},signal:AbortSignal.timeout(10_000)});
+  if(!response.ok)throw new Error(`Yahoo response ${response.status}`);
+  const payload=await response.json() as YahooChart;
+  const result=payload.chart.result?.[0],quote=result?.indicators.quote[0];
+  if(!result||!quote)throw new Error('Invalid Yahoo market data');
+  let candles=result.timestamp.flatMap((time,index)=>{const open=quote.open[index],high=quote.high[index],low=quote.low[index],close=quote.close[index],volume=quote.volume[index];return[open,high,low,close,volume].every(value=>typeof value==='number'&&Number.isFinite(value))?[{time,open:open!,high:high!,low:low!,close:close!,volume:volume!}]:[]});
+  if(interval==='4h')candles=aggregateCandles(candles,4);
+  candles=candles.slice(-500);
+  if(candles.length<50)throw new Error('Insufficient Yahoo candles');
+  const meta=result.meta,last=candles.at(-1)!;
+  const previous=meta.chartPreviousClose??meta.previousClose??last.close;
+  const price=meta.regularMarketPrice??last.close;
+  return{provider:'Yahoo Finance',quoteCurrency:exchange==='KRX'?'KRW':'USD',ticker:{price,changePercent:previous?((price-previous)/previous)*100:0,volume:last.volume,high:meta.regularMarketDayHigh??last.high,low:meta.regularMarketDayLow??last.low},candles};
+}
+
+function aggregateCandles(candles:Candle[],size:number){const output:Candle[]=[];for(let index=0;index<candles.length;index+=size){const group=candles.slice(index,index+size);if(group.length<size)continue;output.push({time:group[0].time,open:group[0].open,high:Math.max(...group.map(value=>value.high)),low:Math.min(...group.map(value=>value.low)),close:group.at(-1)!.close,volume:group.reduce((sum,value)=>sum+value.volume,0)})}return output}
 
 async function fetchJson<T>(url:string):Promise<T>{const response=await fetch(url,{headers:{accept:'application/json'},signal:AbortSignal.timeout(8000)});if(!response.ok)throw new Error(`Upbit response ${response.status}`);return response.json() as Promise<T>}
 function intervalSeconds(interval:string){return({ '1m':60,'5m':300,'15m':900,'30m':1800,'1h':3600,'4h':14400,'1d':86400,'1w':604800 } as Record<string,number>)[interval]}

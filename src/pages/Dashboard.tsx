@@ -12,9 +12,9 @@ export default function Dashboard(){
   const symbol='BTCUSDT';
   const queries=['BTCUSDT','ETHUSDT'].map(s=>useQuery({queryKey:['market',s,'1h'],queryFn:()=>getMarket(s,'1h'),refetchInterval:60_000}));
   const active=queries[symbol==='BTCUSDT'?0:1];
-  const tickers=queries.flatMap(query=>query.data?[query.data.ticker]:[]);
-  const bullish=tickers.length?Math.round(tickers.filter(ticker=>ticker.changePercent>0).length/tickers.length*100):null;
-  const bearish=tickers.length?Math.round(tickers.filter(ticker=>ticker.changePercent<0).length/tickers.length*100):null;
+  const directionScores=scenarioScores(active.data);
+  const bullish=active.data?directionScores.bullish:null;
+  const bearish=active.data?directionScores.bearish:null;
   const today=new Intl.DateTimeFormat('ko-KR',{year:'numeric',month:'long',day:'numeric',weekday:'long'}).format(new Date());
 
   return <main className="mx-auto max-w-[1440px] px-4 py-8 md:px-8 md:py-12">
@@ -24,7 +24,7 @@ export default function Dashboard(){
         <h1 className="text-2xl font-semibold tracking-tight tabular-nums md:text-4xl">{today}</h1>
       </div>
       <div className="flex items-center gap-4 rounded-xl border border-[#26303d] bg-surface/70 px-4 py-3 text-sm tabular-nums">
-        <span className="text-neutral">{t('marketDirection')}</span>
+        <span className="text-neutral">{t('marketDirection')} · 정량</span>
         <span className="text-bullish">{t('bullish')} <strong>{bullish===null?'—':bullish}%</strong></span>
         <span className="h-4 w-px bg-[#35404d]"/>
         <span className="text-bearish">{t('bearish')} <strong>{bearish===null?'—':bearish}%</strong></span>

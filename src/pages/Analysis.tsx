@@ -12,7 +12,7 @@ const cryptoSymbols=new Set(['BTCUSDT','ETHUSDT','SOLUSDT','XRPUSDT']);
 export default function Analysis(){
   const{symbol='BTCUSDT'}=useParams();
   const navigate=useNavigate();
-  const hasQuantData=cryptoSymbols.has(symbol);
+  const hasQuantData=cryptoSymbols.has(symbol)||/^(KRX|NASDAQ|NYSE):[A-Z0-9.\-]+$/.test(symbol);
   const[interval,setInterval]=useState('1h');
   const[symbolSearch,setSymbolSearch]=useState(symbol.replace('USDT',''));
   useEffect(()=>setSymbolSearch(symbol.replace('USDT','')),[symbol]);
@@ -50,7 +50,7 @@ type MultiFrame={summary:string;details:string};
 function buildMultiFrame(markets:(MarketPayload|undefined)[]):MultiFrame{let bullish=0,bearish=0,available=0;const details=analysisFrames.map((frame,index)=>{const scenario=markets[index]?.analysis.elliott.scenarios[0];if(!scenario)return`${frame}: 판정 불가`;available++;if(scenario.direction==='bullish')bullish++;else bearish++;return`${frame}: ${scenario.direction==='bullish'?'상승':'하락'} ${scenario.pattern}`});const direction=!available?'다중 시간대 판정 불가':bullish===bearish?'상승·하락 혼조':bullish>bearish?'다중 시간대 상승 우세':'다중 시간대 하락 우세';return{summary:`${direction} (${available}/${analysisFrames.length})`,details:details.join(' · ')}}
 function SymbolSearch({value,setValue,onSubmit}:{value:string;setValue:(value:string)=>void;onSubmit:(event:FormEvent)=>void}){return <form onSubmit={onSubmit} className="flex w-full max-w-sm items-center rounded-lg border border-[#303b48] bg-surface px-3 focus-within:border-primary"><Search size={16} className="shrink-0 text-neutral"/><input aria-label="심볼 검색" list="analysis-symbols" value={value} onChange={event=>setValue(event.target.value)} placeholder="005930, NASDAQ:AAPL, BTC…" className="min-w-0 flex-1 bg-transparent px-2 py-2.5 text-sm text-white outline-none"/><datalist id="analysis-symbols"><option value="005930">Samsung Electronics</option><option value="035720">Kakao</option><option value="NASDAQ:AAPL">Apple</option><option value="NASDAQ:NVDA">NVIDIA</option><option value="NASDAQ:TSLA">Tesla</option><option value="BTC">Bitcoin</option><option value="ETH">Ethereum</option><option value="SOL">Solana</option><option value="XRP">XRP</option></datalist><button type="submit" className="text-[10px] font-medium text-primary">검색</button></form>}
 function statusLabel(status:'confirmed'|'developing'|'unavailable'){return status==='confirmed'?'확정':status==='developing'?'진행 중':'판정 불가'}
-function tradingViewSymbol(symbol:string,quoteCurrency:'USDT'|'KRW'){const asset=symbol.replace('USDT','');return quoteCurrency==='KRW'?`UPBIT:${asset}KRW`:`BINANCE:${asset}USDT`}
+function tradingViewSymbol(symbol:string,quoteCurrency:'USDT'|'KRW'|'USD'){if(symbol.includes(':'))return symbol;const asset=symbol.replace('USDT','');return quoteCurrency==='KRW'?`UPBIT:${asset}KRW`:`BINANCE:${asset}USDT`}
 function tradingViewRouteSymbol(symbol:string){if(cryptoSymbols.has(symbol))return`BINANCE:${symbol}`;return symbol.includes(':')?symbol:`NASDAQ:${symbol}`}
 function NumberStat({n,value}:{n:string;value:number|null}){return <Stat n={n} value={value==null?'데이터 부족':value.toFixed(2)}/>}
 function Stat({n,value}:{n:string;value:string}){return <div className="min-w-0"><dt className="text-neutral">{n}</dt><dd className="mt-1 break-words font-medium tabular-nums">{value}</dd></div>}
