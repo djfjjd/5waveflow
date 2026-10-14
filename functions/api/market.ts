@@ -7,7 +7,7 @@ type ProviderData={provider:'Binance Spot'|'Upbit KRW';quoteCurrency:'USDT'|'KRW
 type UpbitCandle={candle_date_time_utc:string;opening_price:number;high_price:number;low_price:number;trade_price:number;candle_acc_trade_volume:number};
 type UpbitTicker={trade_price:number;signed_change_rate:number;acc_trade_price_24h:number;high_price:number;low_price:number};
 const allowedSymbols=new Set(['BTCUSDT','ETHUSDT']);
-const allowedIntervals=new Set(['1m','5m','15m','1h','4h','1d','1w']);
+const allowedIntervals=new Set(['1m','5m','15m','30m','1h','4h','1d','1w']);
 
 export const onRequestGet:PagesFunction<Env>=async({request,env})=>{
   const url=new URL(request.url);
@@ -43,7 +43,7 @@ async function fetchBinance(base:string,symbol:string,interval:string):Promise<P
 
 async function fetchUpbit(symbol:string,interval:string):Promise<ProviderData>{
   const market=`KRW-${symbol.replace('USDT','')}`;
-  const path=interval==='1d'?'days':interval==='1w'?'weeks':`minutes/${({ '1m':1,'5m':5,'15m':15,'1h':60,'4h':240 } as Record<string,number>)[interval]}`;
+  const path=interval==='1d'?'days':interval==='1w'?'weeks':`minutes/${({ '1m':1,'5m':5,'15m':15,'30m':30,'1h':60,'4h':240 } as Record<string,number>)[interval]}`;
   const tickerPromise=fetchJson<UpbitTicker[]>(`https://api.upbit.com/v1/ticker?markets=${market}`);
   const rows:UpbitCandle[]=[];
   let to:string|undefined;
@@ -63,6 +63,6 @@ async function fetchUpbit(symbol:string,interval:string):Promise<ProviderData>{
 }
 
 async function fetchJson<T>(url:string):Promise<T>{const response=await fetch(url,{headers:{accept:'application/json'},signal:AbortSignal.timeout(8000)});if(!response.ok)throw new Error(`Upbit response ${response.status}`);return response.json() as Promise<T>}
-function intervalSeconds(interval:string){return({ '1m':60,'5m':300,'15m':900,'1h':3600,'4h':14400,'1d':86400,'1w':604800 } as Record<string,number>)[interval]}
+function intervalSeconds(interval:string){return({ '1m':60,'5m':300,'15m':900,'30m':1800,'1h':3600,'4h':14400,'1d':86400,'1w':604800 } as Record<string,number>)[interval]}
 export function onlyClosedCandles(candles:Candle[],interval:string,now:number){const duration=intervalSeconds(interval);return candles.filter(candle=>(candle.time+duration)*1000<=now)}
 function json(body:unknown,status=200,extra:Record<string,string>={}){return new Response(JSON.stringify(body),{status,headers:{'content-type':'application/json;charset=UTF-8','X-Content-Type-Options':'nosniff',...extra}})}
