@@ -10,3 +10,8 @@ coverage
 *.tsbuildinfo
 vite.config.js
 vite.config.d.ts
+apps/android/.gradle/
+apps/android/local.properties
+apps/android/**/build/
+apps/android/*.jks
+apps/android/*.keystore

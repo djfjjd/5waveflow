@@ -20,6 +20,7 @@ export const onRequestGet:PagesFunction<Env>=async({request,env})=>{
     let data:ProviderData;
     if(stockSymbol)data=await fetchYahoo(symbol,interval);
     else if(market==='usdt')data=await fetchUsdtMarket(env.BINANCE_API_BASE,symbol,interval);
+    else if(market==='upbit')data=await fetchUpbit(symbol,interval);
     else try{data=await fetchBinanceMarket(env.BINANCE_API_BASE,symbol,interval)}catch{data=await fetchUpbit(symbol,interval)}
     const closedCandles=onlyClosedCandles(data.candles,interval,Date.now());
     if(closedCandles.length<50)throw new Error('Insufficient closed candles');

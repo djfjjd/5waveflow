@@ -60,4 +60,14 @@ SNS API는 플랫폼별 앱 심사와 권한이 필요합니다. Instagram은 Me
 
 `npm run typecheck` · `npm test` · `npm run build`
 
+## 5WaveFlow Live workspace
+
+- `apps/web` — 기존 웹 앱을 루트에서 유지하며 점진적으로 이전하기 위한 안내
+- `apps/android` — Kotlin/Jetpack Compose 설정 앱과 네이티브 Canvas `WallpaperService`
+- `apps/ios` — PHASE C용 SwiftUI/WidgetKit 계획
+- `packages/market-data` — 공통 종목·시간봉·API 요청 계약
+- `packages/wallpaper` — 공통 프리셋과 테마 계약
+
+웹 미리보기는 `/wallpaper`에서 확인합니다. Android 빌드에는 JDK 17과 Android SDK 36이 필요하며, API 주소는 `FIVEWAVEFLOW_API_BASE_URL` Gradle 속성으로 지정할 수 있습니다. 데이터 공급자별 상업 이용 확인 사항은 [`docs/DATA_LICENSING.md`](docs/DATA_LICENSING.md)에 기록했습니다.
+
 본 서비스는 투자 자문이나 수익 보장을 제공하지 않습니다.
