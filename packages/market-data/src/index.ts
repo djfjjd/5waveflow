@@ -11,3 +11,8 @@ export function marketApiRequest(request:MarketRequest){
   if(request.symbol==='BTCKRW')return{symbol:'BTCUSDT',interval:request.interval,market:'upbit' as const};
   return{symbol:request.symbol,interval:request.interval,market:'usdt' as const};
 }
+
+export function wallpaperImagePath(request:MarketRequest&{theme:'dark'|'light';refreshMinutes:number}){
+  const refresh=Math.min(60,Math.max(1,Math.round(request.refreshMinutes)));
+  return `/api/wallpaper?${new URLSearchParams({symbol:request.symbol==='BTCKRW'?'BTCUSDT':request.symbol,interval:request.interval,theme:request.theme,refresh:String(refresh)}).toString()}`;
+}
