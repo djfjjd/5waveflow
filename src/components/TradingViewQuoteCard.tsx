@@ -9,6 +9,7 @@ export default function TradingViewQuoteCard({symbol}:Props){
   const{i18n}=useTranslation();
   const theme=useSiteTheme();
   const locale=i18n.resolvedLanguage?.startsWith('ko')?'kr':'en';
+  const isExchangeRate=symbol==='FX_IDC:USDKRW';
   useEffect(()=>{
     const root=ref.current;
     if(!root)return;
@@ -20,12 +21,12 @@ export default function TradingViewQuoteCard({symbol}:Props){
     script.src='https://s3.tradingview.com/external-embedding/embed-widget-single-quote.js';
     script.type='text/javascript';
     script.async=true;
-    script.textContent=JSON.stringify({symbol,width:'100%',height:'100%',isTransparent:theme==='light',colorTheme:theme,locale});
+    script.textContent=JSON.stringify({symbol,width:'100%',height:'100%',isTransparent:isExchangeRate||theme==='light',colorTheme:theme,locale});
     root.append(widget,script);
     return()=>root.replaceChildren();
-  },[symbol,locale,theme]);
+  },[isExchangeRate,symbol,locale,theme]);
 
-  return <article className="quote-widget-shell min-w-0 overflow-hidden bg-transparent">
+  return <article className={`quote-widget-shell min-w-0 overflow-hidden bg-transparent ${isExchangeRate?'quote-widget-shell--fx':''}`}>
     <div className="h-[82px] w-full overflow-hidden px-1 py-2 sm:h-[96px] sm:px-2 sm:py-3"><div ref={ref} className="quote-widget-content tradingview-widget-container h-[120px] w-full sm:h-[72px]"/></div>
   </article>
 }
