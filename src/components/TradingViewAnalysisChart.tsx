@@ -21,6 +21,12 @@ export default function TradingViewAnalysisChart({symbol,interval,market}:Props)
     rsiSeries.setData(candles.flatMap((candle,index)=>{const value=rsi(closes.slice(0,index+1));return value==null?[]:[{time:candle.time as UTCTimestamp,value}]}));
     rsiSeries.createPriceLine({price:70,color:'rgba(255,92,112,.45)',lineWidth:1,lineStyle:LineStyle.Dashed,axisLabelVisible:false,title:'RSI 70'});
     rsiSeries.createPriceLine({price:30,color:'rgba(0,200,150,.45)',lineWidth:1,lineStyle:LineStyle.Dashed,axisLabelVisible:false,title:'RSI 30'});
+    const resizeChart=()=>{
+      const height=getHeight();
+      chart.applyOptions({width:root.clientWidth,height});
+      chart.panes()[1]?.setHeight(Math.max(64,Math.round(height*.18)));
+    };
+    resizeChart();
 
     const scenario=market.analysis.elliott.scenarios[0];
     const markers:SeriesMarker<UTCTimestamp>[]=[];
@@ -30,7 +36,7 @@ export default function TradingViewAnalysisChart({symbol,interval,market}:Props)
     createSeriesMarkers(series,markers,{zOrder:'top',autoScale:true});
 
     chart.timeScale().setVisibleLogicalRange({from:Math.max(0,candles.length-140),to:candles.length+5});
-    const observer=new ResizeObserver(()=>chart.applyOptions({width:root.clientWidth,height:getHeight()}));
+    const observer=new ResizeObserver(resizeChart);
     observer.observe(root);
     return()=>{observer.disconnect();chart.remove()};
   },[interval,market,symbol]);
