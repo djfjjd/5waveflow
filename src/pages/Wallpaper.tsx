@@ -17,7 +17,7 @@ export default function Wallpaper(){
   const request=marketApiRequest({symbol,interval});
   const query=useQuery({queryKey:['wallpaper',symbol,interval],queryFn:()=>getMarket(request.symbol,request.interval,request.market),refetchInterval:refreshMinutes*60_000,staleTime:20_000});
   const market=query.data,scores=scenarioScores(market),imagePath=wallpaperImagePath({symbol,interval,theme,refreshMinutes}),imageUrl=typeof window==='undefined'?imagePath:`${window.location.origin}${imagePath}`;
-  return <main className="mx-auto max-w-[1440px] px-4 py-6 md:px-8">
+  return <main className="theme-page mx-auto max-w-[1440px] px-4 py-6 md:px-8">
     <nav aria-label="배경화면 하위 메뉴" className="sticky top-16 z-30 mb-4 flex overflow-x-auto rounded-xl border border-[#26303d] bg-background/95 p-1.5 text-xs backdrop-blur"><SubMenu href="#preview">미리보기</SubMenu><SubMenu href="#customize">사용자 설정</SubMenu><SubMenu href="#presets">프리셋 안내</SubMenu><SubMenu href="#ios">iPhone 자동화</SubMenu><SubMenu href="#android">Android 적용</SubMenu></nav>
     <section id="customize" className="scroll-mt-32 mb-4 grid gap-3 rounded-xl border border-[#26303d] bg-surface/70 p-3 sm:grid-cols-2 lg:grid-cols-5">
       <Control label="종목"><select value={symbol} onChange={event=>setSymbol(event.target.value as MarketSymbol)}>{MARKET_SYMBOLS.map(value=><option key={value}>{value}</option>)}</select></Control>

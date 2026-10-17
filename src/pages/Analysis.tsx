@@ -21,7 +21,7 @@ export default function Analysis(){
   const query=useQuery({queryKey:['market',symbol,interval,fixedMarket],queryFn:()=>getMarket(symbol,interval,fixedMarket),enabled:hasQuantData});
   const frameQuery=useQuery({queryKey:['market-multiframe',symbol,fixedMarket],queryFn:async()=>{const results:(MarketPayload|undefined)[]=[];for(const frame of analysisFrames)results.push(await getMarket(symbol,frame,fixedMarket).catch(()=>undefined));return results},staleTime:60_000,enabled:hasQuantData});
   const multiFrame=buildMultiFrame(frameQuery.data??[]);
-  return <main className="mx-auto max-w-[1440px] px-4 pb-8 pt-2 md:px-8 md:pt-4">
+  return <main className="theme-page mx-auto max-w-[1440px] px-4 pb-8 pt-2 md:px-8 md:pt-4">
     <div className="mb-4 flex flex-wrap items-center justify-between gap-2"><div className="flex flex-wrap gap-2">{['15m','30m','1h','4h','1d','1w'].map(value=><button key={value} onClick={()=>setInterval(value)} className={`rounded-lg px-3 py-2 text-xs ${value===interval?'bg-primary':'bg-surface text-neutral'}`}>{value}</button>)}</div><SymbolSearch value={symbolSearch} setValue={setSymbolSearch} onSubmit={submitSymbol}/></div>
     <div className="mb-4 text-right"><Link to="/technical-analysis" className="text-xs text-primary hover:text-white">SOW·SC·Upthrust 등 기술적 분석 용어 보기 →</Link></div>
     {!hasQuantData&&<div className="mb-4 rounded-lg border border-[#f5b942]/30 bg-[#f5b942]/5 px-4 py-3 text-xs text-[#e9bd58]">TradingView 차트는 표시되지만 이 종목의 자체 OHLCV 분석 공급자는 아직 연결되지 않았습니다.</div>}
