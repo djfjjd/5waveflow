@@ -1,13 +1,8 @@
-import {MARKET_INTERVALS,MARKET_SYMBOLS,marketApiRequest,wallpaperImagePath,type MarketInterval,type MarketSymbol} from '@5waveflow/market-data';
+import {MARKET_INTERVALS,MARKET_SYMBOLS,wallpaperImagePath,type MarketInterval,type MarketSymbol} from '@5waveflow/market-data';
 import {WALLPAPER_PRESETS,type WallpaperPresetId,type WallpaperTheme} from '@5waveflow/wallpaper';
-import {useQuery} from '@tanstack/react-query';
 import {useEffect,useState,type ReactNode} from 'react';
-import {getMarket} from '../lib/api';
-import {scenarioScores,type ScenarioScores} from '../lib/scenarioScores';
-import {downloadIPhoneWallpaper} from '../lib/wallpaperExport';
 import {appleShortcutShareUrl} from '../lib/shortcut';
 import {useSiteTheme} from '../lib/useSiteTheme';
-import type {MarketPayload} from '../types';
 
 const sharedShortcutUrl=appleShortcutShareUrl(import.meta.env.VITE_IOS_SHORTCUT_URL);
 const symbolLabels:Record<MarketSymbol,string>={'KRX:005930':'삼성전자','KRX:035720':'카카오','KRX:000660':'하이닉스',BTCUSDT:'비트코인/USDT',BTCKRW:'비트코인/원',ETHUSDT:'이더리움',XRPUSDT:'리플','NASDAQ:NVDA':'NVIDIA','NASDAQ:TSLA':'Tesla'};
@@ -16,13 +11,11 @@ export default function Wallpaper(){
   const siteTheme=useSiteTheme();
   const[symbol,setSymbol]=useState<MarketSymbol>('BTCUSDT'),[interval,setInterval]=useState<MarketInterval>('15m'),[theme,setTheme]=useState<WallpaperTheme>(siteTheme),[presetId,setPresetId]=useState<WallpaperPresetId>('ai'),[refreshMinutes,setRefreshMinutes]=useState(15);
   useEffect(()=>setTheme(siteTheme),[siteTheme]);
-  const request=marketApiRequest({symbol,interval});
-  const query=useQuery({queryKey:['wallpaper',symbol,interval],queryFn:()=>getMarket(request.symbol,request.interval,request.market),refetchInterval:refreshMinutes*60_000,staleTime:20_000});
-  const market=query.data,scores=scenarioScores(market),imagePath=wallpaperImagePath({symbol,interval,theme,refreshMinutes}),imageUrl=typeof window==='undefined'?imagePath:`${window.location.origin}${imagePath}`;
+  const imagePath=wallpaperImagePath({symbol,interval,theme,refreshMinutes}),imageUrl=typeof window==='undefined'?imagePath:`${window.location.origin}${imagePath}`;
   return <main className="theme-page mx-auto max-w-[1440px] px-4 py-6 md:px-8">
-    <section id="preview" className="scroll-mt-32 grid grid-cols-2 gap-3 rounded-2xl border border-[#26303d] bg-surface/40 p-3 shadow-2xl sm:gap-8 sm:p-6">
-      <DevicePreview label="iPhone" imageUrl={imageUrl} kind="iphone" loading={query.isLoading}/>
-      <DevicePreview label="Android" imageUrl={imageUrl} kind="android" loading={query.isLoading}/>
+    <section id="preview" className="scroll-mt-32 grid grid-cols-2 place-items-center gap-3 rounded-2xl border border-[#26303d] bg-surface/40 p-3 shadow-2xl sm:gap-6 sm:p-4">
+      <DevicePreview label="iPhone" imageUrl={imageUrl} kind="iphone"/>
+      <DevicePreview label="Galaxy" imageUrl={imageUrl} kind="android"/>
     </section>
     <section id="customize" className="mt-4 scroll-mt-32 mb-4 grid gap-3 rounded-xl border border-[#26303d] bg-surface/70 p-3 sm:grid-cols-2 lg:grid-cols-5">
       <Control label="종목"><select value={symbol} onChange={event=>setSymbol(event.target.value as MarketSymbol)}>{MARKET_SYMBOLS.map(value=><option key={value} value={value}>{symbolLabels[value]}</option>)}</select></Control>
@@ -31,37 +24,30 @@ export default function Wallpaper(){
       <Control label="테마"><select value={theme} onChange={event=>setTheme(event.target.value as WallpaperTheme)}><option value="dark">Dark</option><option value="light">Light</option></select></Control>
       <Control label="희망 갱신 간격"><select value={refreshMinutes} onChange={event=>setRefreshMinutes(Number(event.target.value))}>{[1,5,10,15,30,60].map(value=><option key={value} value={value}>{value}분</option>)}</select></Control>
     </section>
-    <nav aria-label="배경화면 하위 메뉴" className="sticky top-16 z-30 mb-4 flex overflow-x-auto rounded-xl border border-[#26303d] bg-background/95 p-1.5 text-xs backdrop-blur"><SubMenu href="#preview">미리보기</SubMenu><SubMenu href="#customize">사용자 설정</SubMenu><SubMenu href="#presets">프리셋 안내</SubMenu><SubMenu href="#ios">iPhone 자동화</SubMenu><SubMenu href="#android">Android 적용</SubMenu></nav>
+    <nav aria-label="배경화면 하위 메뉴" className="sticky top-16 z-30 mb-4 flex overflow-x-auto rounded-xl border border-[#26303d] bg-background/95 p-1.5 text-xs backdrop-blur"><SubMenu href="#preview">미리보기</SubMenu><SubMenu href="#customize">사용자 설정</SubMenu><SubMenu href="#presets">프리셋 안내</SubMenu><SubMenu href="#ios">iPhone 자동화</SubMenu></nav>
     {symbol==='BTCKRW'&&<p className="mb-4 rounded-lg border border-warning/30 bg-warning/5 px-3 py-2 text-xs text-warning">개발 미리보기 · 상업 출시 전 Upbit 데이터 사용 승인이 필요합니다.</p>}
     <section id="presets" className="scroll-mt-32 mt-5 grid gap-3 md:grid-cols-3">{WALLPAPER_PRESETS.map(item=><button key={item.id} onClick={()=>setPresetId(item.id)} className={`rounded-xl border p-4 text-left transition ${presetId===item.id?'border-primary bg-primary/10':'border-[#26303d] bg-surface/60 hover:border-[#46566a]'}`}><div className="text-sm font-semibold">{item.name}</div><div className="mt-2 text-xs leading-5 text-neutral">{item.id==='minimal'?'가격과 캔들에 집중한 간결한 화면':item.id==='professional'?'가격축과 거래량을 함께 표시':'정량 분석 마커를 차트와 함께 표시'}</div></button>)}</section>
-    <IOSShortcutSetup imageUrl={imageUrl} market={market} theme={theme} scores={scores} refreshing={query.isFetching} onRefresh={()=>query.refetch()}/>
-    <section id="android" className="scroll-mt-32 mt-5 rounded-xl border border-[#26303d] bg-surface/70 p-5"><div className="label">ANDROID LIVE WALLPAPER</div><h2 className="mt-2 text-lg font-semibold">홈 화면에 적용</h2><p className="mt-3 text-xs leading-5 text-neutral">기존 Android 라이브 월페이퍼는 그대로 유지됩니다. 앱에서 설정한 뒤 시스템 미리보기로 적용하며 화면이 꺼지면 갱신을 중단합니다.</p></section>
-    <section className="mt-5 rounded-xl border border-[#26303d] bg-surface/70 p-5"><div className="label">WIDGETKIT</div><h2 className="mt-2 text-lg font-semibold">iOS 위젯은 별도 기능</h2><p className="mt-3 text-xs leading-5 text-neutral">위젯은 배경화면 자동화와 분리해 PHASE C에서 구현합니다. WidgetKit 갱신 시각은 시스템 예산과 정책에 따라 달라지며 요청한 시간에 정확히 갱신된다고 보장할 수 없습니다.</p></section>
-    <p className="mt-4 text-xs leading-5 text-neutral">브라우저 미리보기입니다. 실제 Android 라이브 월페이퍼는 네이티브 Canvas 렌더러가 화면 가시성과 절전 상태를 감지해 별도로 동작합니다.</p>
+    <IOSShortcutSetup imageUrl={imageUrl}/>
   </main>
 }
 
-function DevicePreview({label,imageUrl,kind,loading}:{label:string;imageUrl:string;kind:'iphone'|'android';loading:boolean}){
-  return <figure className="flex min-w-0 flex-col items-center"><figcaption className="mb-2 text-xs font-semibold text-neutral sm:text-sm">{label}</figcaption><div className={`relative aspect-[9/19.5] w-full max-w-[340px] overflow-hidden border-[5px] bg-black shadow-xl sm:border-[8px] ${kind==='iphone'?'rounded-[2rem] border-[#1d232c] sm:rounded-[3rem]':'rounded-[1.35rem] border-[#303742] sm:rounded-[2rem]'}`}>
+function DevicePreview({label,imageUrl,kind}:{label:string;imageUrl:string;kind:'iphone'|'android'}){
+  return <figure className="flex min-w-0 flex-col items-center"><figcaption className="mb-2 text-xs font-semibold text-neutral sm:text-sm">{label}</figcaption><div className={`relative w-[34vw] max-w-[210px] overflow-hidden border-[4px] bg-black shadow-xl sm:border-[6px] ${kind==='iphone'?'aspect-[9/19.5] rounded-[1.6rem] border-[#1d232c] sm:rounded-[2.4rem]':'aspect-[9/20] rounded-[1.1rem] border-[#303742] sm:rounded-[1.7rem]'}`}>
     {kind==='iphone'?<div className="absolute left-1/2 top-2 z-10 h-3 w-12 -translate-x-1/2 rounded-full bg-black sm:top-3 sm:h-5 sm:w-20"/>:<div className="absolute left-1/2 top-2 z-10 h-2 w-2 -translate-x-1/2 rounded-full bg-black/90 sm:top-3 sm:h-3 sm:w-3"/>}
-    {loading?<div className="flex h-full items-center justify-center bg-background text-[10px] text-neutral sm:text-xs">불러오는 중…</div>:<img src={imageUrl} alt={`${label} 5WaveFlow 배경화면 미리보기`} className="h-full w-full object-cover"/>}
+    <img src={imageUrl} alt={`${label} 5WaveFlow 배경화면 미리보기`} className="h-full w-full object-cover"/>
   </div></figure>
 }
 
 function Control({label,children}:{label:string;children:ReactNode}){return <label className="text-xs text-neutral"><span className="mb-1 block">{label}</span><div className="[&_select]:w-full [&_select]:rounded-lg [&_select]:border [&_select]:border-[#354252] [&_select]:bg-background [&_select]:px-3 [&_select]:py-2 [&_select]:text-white">{children}</div></label>}
 function SubMenu({href,children}:{href:string;children:ReactNode}){return <a href={href} className="shrink-0 rounded-lg px-3 py-2 text-neutral transition hover:bg-surface hover:text-white">{children}</a>}
 
-function IOSShortcutSetup({imageUrl,market,theme,scores,refreshing,onRefresh}:{imageUrl:string;market:MarketPayload|undefined;theme:WallpaperTheme;scores:ScenarioScores;refreshing:boolean;onRefresh:()=>unknown}){
+function IOSShortcutSetup({imageUrl}:{imageUrl:string}){
   const[copied,setCopied]=useState(false);
   const copy=()=>navigator.clipboard.writeText(imageUrl).then(()=>{setCopied(true);setTimeout(()=>setCopied(false),1500)}).catch(()=>undefined);
   const startSetup=()=>{void copy();window.location.href='shortcuts://create-shortcut'};
-  const runUrl=`shortcuts://run-shortcut?name=${encodeURIComponent('5WaveFlow Wallpaper')}`;
   return <section id="ios" className="scroll-mt-32 mt-5 rounded-xl border border-[#26303d] bg-surface/70 p-5">
-    <div className="label">IOS SHORTCUT AUTOMATION</div><h2 className="mt-2 text-lg font-semibold">최신 차트로 배경화면 갱신</h2>
-    {sharedShortcutUrl?<div className="mt-4 rounded-xl border border-primary/40 bg-primary/10 p-4"><div className="text-sm font-semibold">원클릭 설치</div><p className="mt-1 text-xs leading-5 text-neutral">Apple이 검증한 iCloud 공유 페이지에서 `단축어 받기`를 누르면 설치됩니다.</p><a href={sharedShortcutUrl} target="_blank" rel="noreferrer" className="mt-3 inline-flex w-full justify-center rounded-lg bg-primary px-4 py-3 text-sm font-semibold text-white sm:w-auto">5WaveFlow 단축어 원클릭 설치</a></div>:<div className="mt-4 rounded-xl border border-warning/40 bg-warning/5 p-4"><div className="text-sm font-semibold text-warning">공유 링크 등록 전</div><p className="mt-1 text-xs leading-5 text-neutral">운영자가 iPhone 단축어 앱에서 완성본을 공유한 뒤 Cloudflare 환경변수 `VITE_IOS_SHORTCUT_URL`에 iCloud 링크를 등록하면 원클릭 설치 버튼이 활성화됩니다.</p><button type="button" onClick={startSetup} className="mt-3 w-full rounded-lg bg-primary px-4 py-3 text-sm font-semibold text-white sm:w-auto">URL 복사하고 단축어 원본 만들기</button></div>}
-    <div className="mt-3 rounded-lg border border-[#354252] bg-background p-3"><div className="break-all font-mono text-[10px] leading-5 text-neutral">{imageUrl}</div><div className="mt-3 flex flex-wrap gap-2"><button type="button" onClick={()=>void copy()} className="rounded-lg border border-[#354252] px-4 py-2 text-xs text-white">{copied?'복사됨':'URL 다시 복사'}</button><button type="button" onClick={onRefresh} disabled={refreshing} className="rounded-lg border border-[#354252] px-4 py-2 text-xs text-white disabled:opacity-50">{refreshing?'갱신 중…':'지금 수동 갱신'}</button><button type="button" disabled={!market} onClick={()=>market&&downloadIPhoneWallpaper(market,theme,scores)} className="rounded-lg border border-[#354252] px-4 py-2 text-xs text-white disabled:opacity-40">PNG 직접 저장</button></div></div>
+    {sharedShortcutUrl?<a href={sharedShortcutUrl} target="_blank" rel="noreferrer" className="inline-flex w-full justify-center rounded-lg bg-primary px-4 py-3 text-sm font-semibold text-white sm:w-auto">5WaveFlow 단축어 원클릭 설치</a>:<button type="button" onClick={startSetup} className="w-full rounded-lg bg-primary px-4 py-3 text-sm font-semibold text-white sm:w-auto">{copied?'복사됨':'URL 복사하기'}</button>}
     <ol className="mt-4 grid gap-3 text-xs leading-5 text-neutral md:grid-cols-3"><li><strong className="text-white">1.</strong> `URL` 동작을 추가하고 복사된 주소를 붙여넣습니다.</li><li><strong className="text-white">2.</strong> `URL의 콘텐츠 가져오기`를 GET으로 추가합니다.</li><li><strong className="text-white">3.</strong> `배경화면 사진 설정`을 추가하고 단축어 이름을 `5WaveFlow Wallpaper`로 저장합니다.</li></ol>
-    <div className="mt-4 flex flex-wrap gap-2"><a href={runUrl} className="rounded-lg bg-white px-4 py-2 text-xs font-semibold text-background">설치된 단축어로 지금 적용</a><a href="shortcuts://" className="rounded-lg border border-[#354252] px-4 py-2 text-xs text-white">단축어 앱 열기</a></div>
-    <p className="mt-4 rounded-lg border border-primary/30 bg-primary/5 px-3 py-2 text-xs leading-5 text-primary">자동 갱신은 하단 `자동화` 탭 → `+` → `개인용 자동화 생성` → `특정 시간`에서 설치된 단축어를 선택합니다. `표준 시간대로 변경`은 자동화 트리거가 아닙니다.</p><p className="mt-3 rounded-lg border border-warning/30 bg-warning/5 px-3 py-2 text-xs leading-5 text-warning">iCloud 공유 링크도 Apple 설치 확인 화면을 거칩니다. 웹사이트가 사용자 확인 없이 설치하거나 배경화면을 변경할 수는 없으며 실행 시각과 잠금 상태 실행은 iOS가 보장하지 않습니다.</p>
+    <div className="mt-4"><a href="shortcuts://" className="inline-flex rounded-lg border border-[#354252] px-4 py-2 text-xs text-white">단축어 앱 열기</a></div>
   </section>
 }
