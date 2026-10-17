@@ -12,7 +12,7 @@ export default function TradingViewAnalysisChart({symbol,interval,market}:Props)
   useEffect(()=>{
     const root=container.current;
     if(!root||!market?.candles.length)return;
-    const getHeight=()=>Math.round(root.clientWidth*(window.matchMedia('(max-width: 767px)').matches?1:9/16));
+    const getHeight=()=>Math.round(root.clientWidth*(window.matchMedia('(max-width: 767px)').matches?0.9:0.51));
     const chart=createChart(root,{width:root.clientWidth,height:getHeight(),layout:{background:{type:ColorType.Solid,color:light?'#f4f7fb':'#151b23'},textColor:light?'#17202b':'#8b95a5',attributionLogo:true},grid:{vertLines:{color:'transparent'},horzLines:{color:'transparent'}},rightPriceScale:{borderColor:light?'#cbd5e1':'#27313d'},timeScale:{borderColor:light?'#cbd5e1':'#27313d',timeVisible:true,secondsVisible:false},handleScroll:{mouseWheel:true,pressedMouseMove:true,horzTouchDrag:true,vertTouchDrag:true},handleScale:{axisPressedMouseMove:true,mouseWheel:true,pinch:true},crosshair:{vertLine:{color:'#4f8cff'},horzLine:{color:'#4f8cff'}}});
     const candles=market.candles;
     const series=chart.addSeries(CandlestickSeries,{upColor:'#00c896',downColor:'#ff5c70',borderVisible:false,wickUpColor:'#00c896',wickDownColor:'#ff5c70'});
@@ -43,5 +43,5 @@ export default function TradingViewAnalysisChart({symbol,interval,market}:Props)
     return()=>{observer.disconnect();chart.remove()};
   },[interval,light,market,symbol]);
 
-  return <div className="relative aspect-square w-full md:aspect-video"><div ref={container} className="absolute inset-0"/>{!market&&<div className="absolute inset-0 grid place-items-center text-xs text-neutral">차트 데이터를 불러오는 중입니다.</div>}<div className={`pointer-events-none absolute left-3 top-3 rounded px-2 py-1 text-[10px] font-medium ${light?'bg-white/80 text-[#17202b]':'bg-[#0d131b]/80 text-neutral'}`}>{symbol.replace(':',' · ')} · {interval}</div></div>;
+  return <div className="relative aspect-[10/9] w-full md:aspect-[100/51]"><div ref={container} className="absolute inset-0"/>{!market&&<div className="absolute inset-0 grid place-items-center text-xs text-neutral">차트 데이터를 불러오는 중입니다.</div>}<div className={`pointer-events-none absolute left-3 top-3 rounded px-2 py-1 text-[10px] font-medium ${light?'bg-white/80 text-[#17202b]':'bg-[#0d131b]/80 text-neutral'}`}>{symbol.replace(':',' · ')} · {interval}</div></div>;
 }
