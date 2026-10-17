@@ -1,6 +1,7 @@
 import type {WyckoffEventType} from './patterns/types';
 
 export type GlossaryItem={id:string;term:string;fullName:string;group:'Wyckoff 이벤트'|'Wyckoff Phase'|'기술적 지표'|'Elliott Wave';summary:string;signal:string;confirmation:string;caution:string};
+export type DirectionImpact={bullish:number;sideways:number;bearish:number;basis:string};
 
 export const WYCKOFF_EVENT_IDS:Record<WyckoffEventType,string>={SC:'sc',BC:'bc',AR:'ar',ST:'st',Spring:'spring',Upthrust:'upthrust',SOS:'sos',SOW:'sow',LPS:'lps',LPSY:'lpsy'};
 
@@ -30,3 +31,11 @@ export const TECHNICAL_GLOSSARY:GlossaryItem[]=[
   {id:'impulse',term:'1–5 Impulse',fullName:'Elliott 충격파 후보',group:'Elliott Wave',summary:'추세 방향의 1·3·5파와 조정 방향의 2·4파로 구성되는 후보 구조입니다.',signal:'2파 시작점 침범 금지, 3파 최단 금지, 일반 충격파의 4파·1파 비중첩을 검사합니다.',confirmation:'확정 피벗과 Fibonacci 되돌림·확장을 함께 검증합니다.',caution:'규칙을 충족하지 않으면 엔진은 억지로 파동 번호를 붙이지 않습니다.'},
   {id:'abc',term:'A–B–C',fullName:'Elliott 조정파 후보',group:'Elliott Wave',summary:'주 추세에 대한 세 구간 조정 구조 후보입니다.',signal:'A 방향 움직임, B 되돌림, C의 A 극점 돌파 관계를 검사합니다.',confirmation:'피벗 순서와 Fibonacci 비율, 상위 시간대 방향을 함께 확인합니다.',caution:'진행 중 C파는 확정 전까지 형태가 바뀔 수 있습니다.'}
 ];
+
+const DIRECTION_IMPACTS:Record<string,DirectionImpact>={
+  sc:{bullish:55,sideways:25,bearish:20,basis:'매도 절정 뒤 수요 유입 후보'},bc:{bullish:20,sideways:25,bearish:55,basis:'매수 절정 뒤 공급 증가 후보'},ar:{bullish:35,sideways:30,bearish:35,basis:'직전 Climax 방향에 따라 달라짐'},st:{bullish:30,sideways:40,bearish:30,basis:'범위 경계 재시험'},spring:{bullish:65,sideways:20,bearish:15,basis:'지지 회복형 매집 후보'},upthrust:{bullish:15,sideways:20,bearish:65,basis:'저항 재진입형 분산 후보'},sos:{bullish:70,sideways:20,bearish:10,basis:'저항 돌파형 강세 후보'},sow:{bullish:10,sideways:20,bearish:70,basis:'지지 이탈형 약세 후보'},lps:{bullish:65,sideways:25,bearish:10,basis:'돌파 후 최종 지지 후보'},lpsy:{bullish:10,sideways:25,bearish:65,basis:'이탈 후 최종 공급 후보'},
+  'phase-a':{bullish:30,sideways:40,bearish:30,basis:'기존 추세 정지·범위 형성'},'phase-b':{bullish:25,sideways:50,bearish:25,basis:'방향 결정 전 원인 형성'},'phase-c':{bullish:35,sideways:30,bearish:35,basis:'Spring·Upthrust 방향에 따라 결정'},'phase-d':{bullish:35,sideways:30,bearish:35,basis:'SOS·SOW 방향에 따라 결정'},'phase-e':{bullish:40,sideways:20,bearish:40,basis:'확정된 범위 이탈 방향을 추종'},
+  rsi:{bullish:33,sideways:34,bearish:33,basis:'수치와 다이버전스에 따라 방향이 달라짐'},macd:{bullish:33,sideways:34,bearish:33,basis:'MACD·Signal 교차 방향에 따라 결정'},ema:{bullish:35,sideways:30,bearish:35,basis:'정배열·역배열 여부에 따라 결정'},bollinger:{bullish:25,sideways:50,bearish:25,basis:'변동성 지표로 단독 방향성은 낮음'},atr:{bullish:20,sideways:60,bearish:20,basis:'방향이 아닌 변동 폭을 측정'},'volume-ma':{bullish:30,sideways:40,bearish:30,basis:'가격 방향을 확인하는 보조 지표'},zigzag:{bullish:30,sideways:40,bearish:30,basis:'피벗 구조화 도구로 단독 방향성은 낮음'},impulse:{bullish:40,sideways:20,bearish:40,basis:'상승·하락 충격파 방향에 따라 결정'},abc:{bullish:35,sideways:30,bearish:35,basis:'조정 완료 방향과 상위 추세에 따라 결정'}
+};
+
+export function glossaryDirection(id:string):DirectionImpact{return DIRECTION_IMPACTS[id]??{bullish:33,sideways:34,bearish:33,basis:'단독 방향 근거 부족'}}
