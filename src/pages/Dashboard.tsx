@@ -1,15 +1,14 @@
 import {useQuery} from '@tanstack/react-query';
-import {CalendarDays,Search} from 'lucide-react';
-import {type FormEvent,useState} from 'react';
-import {useTranslation} from 'react-i18next';
+import {Search} from 'lucide-react';
+import {type FormEvent,useEffect,useState} from 'react';
+import type {Direction} from '../App';
 import TradingViewAnalysisChart from '../components/TradingViewAnalysisChart';
 import TradingViewQuoteCard from '../components/TradingViewQuoteCard';
 import UpbitQuoteCard from '../components/UpbitQuoteCard';
 import {getMarket} from '../lib/api';
 import {scenarioScores} from '../lib/scenarioScores';
 
-export default function Dashboard(){
-  const{t,i18n}=useTranslation();
+export default function Dashboard({onDirectionChange}:{onDirectionChange:(direction:Direction)=>void}){
   const[symbol,setSymbol]=useState('BTCUSDT'),[interval,setInterval]=useState('1h'),[search,setSearch]=useState('');
   const crypto=['BTCUSDT','ETHUSDT','SOLUSDT','XRPUSDT'].includes(symbol),market=crypto?'usdt' as const:undefined;
   const active=useQuery({queryKey:['market',symbol,interval,market],queryFn:()=>getMarket(symbol,interval,market),refetchInterval:60_000});
@@ -17,32 +16,14 @@ export default function Dashboard(){
   const bullish=active.data?directionScores.bullish:null;
   const sideways=active.data?directionScores.sideways:null;
   const bearish=active.data?directionScores.bearish:null;
-  const isKorean=i18n.resolvedLanguage?.startsWith('ko');
-  const today=new Intl.DateTimeFormat(isKorean?'ko-KR':'en-US',{year:'numeric',month:'long',day:'numeric',weekday:'long',timeZone:'Asia/Seoul'}).format(new Date());
   const chartSymbol=crypto?`${active.data?.provider==='Kraken Spot'?'KRAKEN':'BINANCE'}:${symbol}`:symbol;
+  useEffect(()=>onDirectionChange({bullish,sideways,bearish}),[bearish,bullish,onDirectionChange,sideways]);
 
   return <main className="mx-auto max-w-[1440px] px-4 py-8 md:px-8 md:py-12">
-    <section className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-      <div>
-        <div className="mb-2 flex items-center gap-2 text-xs text-neutral"><CalendarDays size={14}/><span>{t('today')}</span><span className="h-1.5 w-1.5 animate-pulse rounded-full bg-bullish"/></div>
-        <div className="flex items-baseline gap-2"><h1 className="text-2xl font-semibold tracking-tight tabular-nums md:text-4xl">{today}</h1><span className="shrink-0 text-[10px] text-neutral md:text-xs">(+9 UTC)</span></div>
-      </div>
-      <div className="flex items-center rounded-xl border border-[#26303d] bg-surface/70 px-3 py-3 text-xs tabular-nums sm:px-4 sm:text-sm">
-        <span className="shrink-0 text-neutral">{t('marketDirection')}</span>
-        <div className="ml-auto flex items-center justify-end gap-2 sm:ml-4 sm:gap-4">
-          <span className="text-bullish">{t('bullish')} <strong>{bullish===null?'—':bullish}%</strong></span>
-          <span className="h-4 w-px bg-[#35404d]"/>
-          <span className="text-neutral">횡보 <strong className="text-white">{sideways===null?'—':sideways}%</strong></span>
-          <span className="h-4 w-px bg-[#35404d]"/>
-          <span className="text-bearish">{t('bearish')} <strong>{bearish===null?'—':bearish}%</strong></span>
-        </div>
-      </div>
-    </section>
-
     <section className="grid grid-cols-3 gap-2 sm:gap-4">
-      <TradingViewQuoteCard symbol="BINANCE:BTCUSDT" title="BTC / USDT · Binance Spot" href="https://www.tradingview.com/symbols/BTCUSDT/?exchange=BINANCE"/>
+      <TradingViewQuoteCard symbol="BINANCE:BTCUSDT" title="BTC / USDT · Binance Spot"/>
       <UpbitQuoteCard/>
-      <TradingViewQuoteCard symbol="FX_IDC:USDKRW" title="USD / KRW · Exchange Rate" href="https://www.tradingview.com/symbols/USDKRW/?exchange=FX_IDC"/>
+      <TradingViewQuoteCard symbol="FX_IDC:USDKRW" title="USD / KRW · Exchange Rate"/>
     </section>
 
     <section className="mt-6 space-y-2"><div className="grid grid-cols-[minmax(0,1fr)_112px] items-center gap-2 sm:grid-cols-[minmax(0,1fr)_260px]"><div className="flex min-w-0 gap-1 overflow-x-auto">{['1m','5m','15m','30m','1h','4h','1d','1w'].map(value=><button key={value} onClick={()=>setInterval(value)} className={`shrink-0 rounded-lg px-2 py-2 text-[10px] sm:px-3 sm:text-xs ${interval===value?'bg-primary text-white':'bg-surface text-neutral hover:text-white'}`}>{value}</button>)}</div><form onSubmit={submitSearch} className="flex min-w-0 items-center rounded-lg border border-[#303b48] bg-surface px-2 focus-within:border-primary"><Search size={14} className="shrink-0 text-neutral"/><input value={search} onChange={event=>setSearch(event.target.value)} placeholder="심볼 검색" aria-label="메인 심볼 검색" className="min-w-0 flex-1 bg-transparent px-1.5 py-2 text-[11px] text-white outline-none"/></form></div><div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2"><div className="flex min-w-0 gap-1.5 overflow-x-auto pb-1">{QUICK_SYMBOLS.map(item=><button key={item.symbol} onClick={()=>{setSymbol(item.symbol);setSearch('')}} className={`shrink-0 rounded-lg border px-3 py-2 text-[10px] sm:text-xs ${symbol===item.symbol?'border-primary bg-primary/10 text-primary':'border-[#303b48] bg-surface text-neutral hover:text-white'}`}>{item.label}</button>)}</div><DirectionSummary bullish={bullish} sideways={sideways} bearish={bearish}/></div>{active.isError&&<p className="text-xs text-bearish">선택한 종목의 시장 데이터를 불러오지 못했습니다.</p>}</section>

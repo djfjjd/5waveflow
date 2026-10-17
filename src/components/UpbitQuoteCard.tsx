@@ -18,6 +18,5 @@ export default function UpbitQuoteCard(){
     <div className="flex min-h-[82px] flex-col justify-center px-2 py-3 sm:min-h-[96px] sm:px-4">
       {quote?<><div className="whitespace-nowrap text-[11px] font-semibold tracking-tight tabular-nums sm:text-2xl">{Math.round(quote.price).toLocaleString('ko-KR')}원</div><div className={`mt-2 flex items-center gap-0.5 text-[10px] font-medium sm:gap-1 sm:text-sm ${up?'text-bullish':'text-bearish'}`}>{up?<ArrowUpRight className="h-3 w-3 shrink-0 sm:h-3.5 sm:w-3.5"/>:<ArrowDownRight className="h-3 w-3 shrink-0 sm:h-3.5 sm:w-3.5"/>} {quote.changePercent>0?'+':''}{quote.changePercent.toFixed(2)}%</div></>:query.isError?<span className="text-xs text-neutral">시세 확인 불가</span>:<RefreshCw size={17} className="animate-spin text-primary"/>}
     </div>
-    <div className="hidden px-4 pb-3 text-right text-[10px] text-neutral sm:block"><a href="https://upbit.com/exchange?code=CRIX.UPBIT.KRW-BTC" rel="noopener nofollow" target="_blank" className="text-primary hover:underline">상세 시세</a> by Upbit</div>
   </article>
 }
