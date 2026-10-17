@@ -19,7 +19,7 @@ export default function Dashboard({onDirectionChange}:{onDirectionChange:(direct
   const chartSymbol=crypto?`${active.data?.provider==='Kraken Spot'?'KRAKEN':'BINANCE'}:${symbol}`:symbol;
   useEffect(()=>onDirectionChange({bullish,sideways,bearish}),[bearish,bullish,onDirectionChange,sideways]);
 
-  return <main className="mx-auto max-w-[1440px] px-4 py-8 md:px-8 md:py-12">
+  return <main className="mx-auto max-w-[1440px] px-4 pb-8 pt-3 md:px-8 md:pb-12 md:pt-5">
     <section className="grid grid-cols-3 gap-2 sm:gap-4">
       <TradingViewQuoteCard symbol="BINANCE:BTCUSDT"/>
       <UpbitQuoteCard/>

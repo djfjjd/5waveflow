@@ -1,17 +1,19 @@
 import {CandlestickSeries,ColorType,LineSeries,LineStyle,createChart,createSeriesMarkers,type SeriesMarker,type UTCTimestamp} from 'lightweight-charts';
 import {useEffect,useRef} from 'react';
 import {rsi} from '../lib/indicators';
+import {useSiteTheme} from '../lib/useSiteTheme';
 import type {MarketPayload} from '../types';
 
 type Props={symbol:string;interval:string;market?:MarketPayload};
 
 export default function TradingViewAnalysisChart({symbol,interval,market}:Props){
   const container=useRef<HTMLDivElement>(null);
+  const theme=useSiteTheme(),light=theme==='light';
   useEffect(()=>{
     const root=container.current;
     if(!root||!market?.candles.length)return;
     const getHeight=()=>Math.round(root.clientWidth*(window.matchMedia('(max-width: 767px)').matches?1:9/16));
-    const chart=createChart(root,{width:root.clientWidth,height:getHeight(),layout:{background:{type:ColorType.Solid,color:'#151b23'},textColor:'#8b95a5',attributionLogo:true},grid:{vertLines:{color:'transparent'},horzLines:{color:'transparent'}},rightPriceScale:{borderColor:'#27313d'},timeScale:{borderColor:'#27313d',timeVisible:true,secondsVisible:false},handleScroll:{mouseWheel:true,pressedMouseMove:true,horzTouchDrag:true,vertTouchDrag:true},handleScale:{axisPressedMouseMove:true,mouseWheel:true,pinch:true},crosshair:{vertLine:{color:'#4f8cff'},horzLine:{color:'#4f8cff'}}});
+    const chart=createChart(root,{width:root.clientWidth,height:getHeight(),layout:{background:{type:ColorType.Solid,color:light?'#f4f7fb':'#151b23'},textColor:light?'#17202b':'#8b95a5',attributionLogo:true},grid:{vertLines:{color:'transparent'},horzLines:{color:'transparent'}},rightPriceScale:{borderColor:light?'#cbd5e1':'#27313d'},timeScale:{borderColor:light?'#cbd5e1':'#27313d',timeVisible:true,secondsVisible:false},handleScroll:{mouseWheel:true,pressedMouseMove:true,horzTouchDrag:true,vertTouchDrag:true},handleScale:{axisPressedMouseMove:true,mouseWheel:true,pinch:true},crosshair:{vertLine:{color:'#4f8cff'},horzLine:{color:'#4f8cff'}}});
     const candles=market.candles;
     const series=chart.addSeries(CandlestickSeries,{upColor:'#00c896',downColor:'#ff5c70',borderVisible:false,wickUpColor:'#00c896',wickDownColor:'#ff5c70'});
     series.setData(candles.map(candle=>({time:candle.time as UTCTimestamp,open:candle.open,high:candle.high,low:candle.low,close:candle.close})));
@@ -39,7 +41,7 @@ export default function TradingViewAnalysisChart({symbol,interval,market}:Props)
     const observer=new ResizeObserver(resizeChart);
     observer.observe(root);
     return()=>{observer.disconnect();chart.remove()};
-  },[interval,market,symbol]);
+  },[interval,light,market,symbol]);
 
-  return <div className="relative aspect-square w-full md:aspect-video"><div ref={container} className="absolute inset-0"/>{!market&&<div className="absolute inset-0 grid place-items-center text-xs text-neutral">차트 데이터를 불러오는 중입니다.</div>}<div className="pointer-events-none absolute left-3 top-3 rounded bg-[#0d131b]/80 px-2 py-1 text-[10px] font-medium text-neutral">{symbol.replace(':',' · ')} · {interval}</div></div>;
+  return <div className="relative aspect-square w-full md:aspect-video"><div ref={container} className="absolute inset-0"/>{!market&&<div className="absolute inset-0 grid place-items-center text-xs text-neutral">차트 데이터를 불러오는 중입니다.</div>}<div className={`pointer-events-none absolute left-3 top-3 rounded px-2 py-1 text-[10px] font-medium ${light?'bg-white/80 text-[#17202b]':'bg-[#0d131b]/80 text-neutral'}`}>{symbol.replace(':',' · ')} · {interval}</div></div>;
 }
