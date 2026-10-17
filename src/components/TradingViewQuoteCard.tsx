@@ -14,13 +14,13 @@ export default function TradingViewQuoteCard({symbol}:Props){
     if(!root)return;
     root.replaceChildren();
     const widget=document.createElement('div');
-    widget.className='tradingview-widget-container__widget h-full w-full';
+    widget.className='quote-widget-frame tradingview-widget-container__widget h-full w-full';
     widget.style.height='100%';
     const script=document.createElement('script');
     script.src='https://s3.tradingview.com/external-embedding/embed-widget-single-quote.js';
     script.type='text/javascript';
     script.async=true;
-    script.textContent=JSON.stringify({symbol,width:'100%',height:'100%',isTransparent:false,colorTheme:theme,locale});
+    script.textContent=JSON.stringify({symbol,width:'100%',height:'100%',isTransparent:true,colorTheme:theme,locale});
     root.append(widget,script);
     return()=>root.replaceChildren();
   },[symbol,locale,theme]);
