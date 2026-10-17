@@ -25,7 +25,7 @@ export default function TradingViewQuoteCard({symbol}:Props){
     return()=>root.replaceChildren();
   },[symbol,locale,theme]);
 
-  return <article className="min-w-0 overflow-hidden bg-transparent">
+  return <article className="quote-widget-shell min-w-0 overflow-hidden bg-black">
     <div className="h-[82px] w-full overflow-hidden px-1 py-2 sm:h-[96px] sm:px-2 sm:py-3"><div ref={ref} className="quote-widget-content tradingview-widget-container h-[120px] w-full sm:h-[72px]"/></div>
   </article>
 }
