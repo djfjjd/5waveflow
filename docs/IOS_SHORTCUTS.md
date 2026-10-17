@@ -1,5 +1,14 @@
 # iOS wallpaper shortcut
 
+## Publish the one-click install link
+
+1. Build and test the complete shortcut on an iPhone. Use the exact name **5WaveFlow Wallpaper**.
+2. In the shortcut editor, open Share and choose **Copy iCloud Link**. Apple receives a copy for validation and returns a URL shaped like `https://www.icloud.com/shortcuts/...`.
+3. In Cloudflare Pages, add the build environment variable `VITE_IOS_SHORTCUT_URL` with that complete URL.
+4. Trigger a new site build. The `/wallpaper` page validates that the URL belongs to the iCloud shortcut path before showing the **5WaveFlow 단축어 원클릭 설치** button.
+
+Visitors still see Apple's shortcut preview and tap **Get Shortcut**. This is Apple's supported one-click sharing flow; silent installation isn't supported.
+
 ## Supported flow
 
 1. Open `/wallpaper`, choose the settings, and tap **URL 복사하고 단축어 만들기**. The button copies the generated image URL and opens `shortcuts://create-shortcut`.
@@ -13,7 +22,7 @@
 
 The server returns a 1170×2535 PNG (9:19.5) generated from current BTC/ETH OHLCV. The lock-screen clock region is intentionally left clear.
 
-Apple doesn't expose a web URL scheme that installs arbitrary shortcut actions without review. A true one-tap installation requires an Apple-validated iCloud shortcut link created and shared from an Apple device. The website therefore automates the supported parts—copying the configured URL, opening the editor, and launching the installed shortcut—without claiming silent installation.
+Until `VITE_IOS_SHORTCUT_URL` is registered, the website falls back to copying the configured URL and opening the shortcut editor. After registration, the Apple-validated iCloud share page becomes the primary installation path.
 
 ## Platform limits
 
