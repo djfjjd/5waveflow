@@ -15,12 +15,12 @@ export const onRequestGet:PagesFunction=async({request})=>{
 async function render(market:MarketResponse,theme:'dark'|'light',displaySymbol:string,displayInterval:string){
   const width=1170,height=2535,pixels=new Uint8Array(width*height*4),background=theme==='dark'?[11,16,23]:[244,247,251],foreground=theme==='dark'?[255,255,255]:[17,24,39],muted=theme==='dark'?[139,149,165]:[82,96,113];fill(pixels,width,height,background);
   // Keep the top 600 px empty for the iOS Lock Screen clock and status area.
-  const left=72,right=1098,chartTop=840,top=980,bottom=2200,price=formatPrice(market.ticker.price),change=`${market.ticker.changePercent>=0?'+':''}${market.ticker.changePercent.toFixed(2)}%`;
+  const left=72,right=1098,chartTop=900,top=1040,bottom=2200,price=formatPrice(market.ticker.price),change=`${market.ticker.changePercent>=0?'+':''}${market.ticker.changePercent.toFixed(2)}%`;
   text(pixels,width,left,chartTop,`${displaySymbol} ${displayInterval}`.toUpperCase(),muted,5);text(pixels,width,right-textWidth(price,7),chartTop,price,foreground,7);text(pixels,width,right-textWidth(change,5),chartTop+56,change,market.ticker.changePercent>=0?[0,200,150]:[255,92,112],5);
   const candles=market.candles.slice(-90),high=Math.max(...candles.map(c=>c.high)),low=Math.min(...candles.map(c=>c.low)),range=Math.max(high-low,.000001),step=(right-left)/Math.max(candles.length,1),y=(value:number)=>Math.round(top+(high-value)/range*(bottom-top));
   for(let i=0;i<=4;i++){const gy=Math.round(top+(bottom-top)*i/4);rect(pixels,width,left,gy,right-left,2,theme==='dark'?[27,36,48]:[220,226,234])}
   candles.forEach((c,index)=>{const x=Math.round(left+step*(index+.5)),color=c.close>=c.open?[0,200,150]:[255,92,112];rect(pixels,width,x-1,y(c.high),3,Math.max(2,y(c.low)-y(c.high)),color);rect(pixels,width,Math.round(x-step*.28),Math.min(y(c.open),y(c.close)),Math.max(3,Math.round(step*.56)),Math.max(3,Math.abs(y(c.open)-y(c.close))),color)});
-  const score=directionScores(market.indicators),scoreOffsetX=60;[[`↗ ${score.up}%`,[0,200,150]],[`→ ${score.flat}%`,muted],[`↘ ${score.down}%`,[255,92,112]]].forEach(([label,color],index)=>{const value=label as string;text(pixels,width,Math.round((width-textWidth(value,5))/2)+scoreOffsetX,1390+index*72,value,color as RGB,5)});
+  const score=directionScores(market.indicators),scoreOffsetX=25;[[`↗ ${score.up}%`,[0,200,150]],[`→ ${score.flat}%`,muted],[`↘ ${score.down}%`,[255,92,112]]].forEach(([label,color],index)=>{const value=label as string;text(pixels,width,Math.round((width-textWidth(value,5))/2)+scoreOffsetX,1390+index*72,value,color as RGB,5)});
   const logo='5WAVEFLOW';text(pixels,width,right-textWidth(logo,5),2135,logo,muted,5);return encodePng(width,height,pixels);
 }
 
