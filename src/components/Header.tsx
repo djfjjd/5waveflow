@@ -1,8 +1,10 @@
 import {Activity,Check,Globe2,Monitor,Moon,Sun} from 'lucide-react';
+import {useQuery} from '@tanstack/react-query';
 import {useEffect,useRef,useState} from 'react';
 import {NavLink} from 'react-router-dom';
 import {useTranslation} from 'react-i18next';
-import type {Direction} from '../App';
+import {getMarket} from '../lib/api';
+import {scenarioScores} from '../lib/scenarioScores';
 import {SITE_THEME_EVENT,type ResolvedTheme} from '../lib/useSiteTheme';
 
 type ThemeMode='system'|'dark'|'light';
@@ -12,8 +14,11 @@ const themeOptions=[
   {value:'system' as const,label:'시스템',icon:Monitor},
 ];
 
-export default function Header({direction}:{direction:Direction}){
+export default function Header(){
   const{t,i18n}=useTranslation();
+  const bitcoin=useQuery({queryKey:['header-market','BTCUSDT','1h'],queryFn:()=>getMarket('BTCUSDT','1h','usdt'),refetchInterval:60_000});
+  const bitcoinScores=scenarioScores(bitcoin.data);
+  const direction=bitcoin.data?bitcoinScores:{bullish:null,sideways:null,bearish:null};
   const storedTheme=localStorage.getItem('5waveflow-theme');
   const[theme,setTheme]=useState<ThemeMode>(storedTheme==='dark'||storedTheme==='light'||storedTheme==='system'?storedTheme:'system');
   const[themeMenuOpen,setThemeMenuOpen]=useState(false);

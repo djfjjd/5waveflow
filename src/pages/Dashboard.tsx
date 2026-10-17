@@ -1,14 +1,13 @@
 import {useQuery} from '@tanstack/react-query';
 import {Search} from 'lucide-react';
-import {type FormEvent,useEffect,useState} from 'react';
-import type {Direction} from '../App';
+import {type FormEvent,useState} from 'react';
 import TradingViewAnalysisChart from '../components/TradingViewAnalysisChart';
 import TradingViewQuoteCard from '../components/TradingViewQuoteCard';
 import UpbitQuoteCard from '../components/UpbitQuoteCard';
 import {getMarket} from '../lib/api';
 import {scenarioScores} from '../lib/scenarioScores';
 
-export default function Dashboard({onDirectionChange}:{onDirectionChange:(direction:Direction)=>void}){
+export default function Dashboard(){
   const[symbol,setSymbol]=useState('BTCUSDT'),[interval,setInterval]=useState('1h'),[search,setSearch]=useState('');
   const crypto=['BTCUSDT','ETHUSDT','SOLUSDT','XRPUSDT'].includes(symbol),market=crypto?'usdt' as const:undefined;
   const active=useQuery({queryKey:['market',symbol,interval,market],queryFn:()=>getMarket(symbol,interval,market),refetchInterval:60_000});
@@ -17,7 +16,6 @@ export default function Dashboard({onDirectionChange}:{onDirectionChange:(direct
   const sideways=active.data?directionScores.sideways:null;
   const bearish=active.data?directionScores.bearish:null;
   const chartSymbol=crypto?`${active.data?.provider==='Kraken Spot'?'KRAKEN':'BINANCE'}:${symbol}`:symbol;
-  useEffect(()=>onDirectionChange({bullish,sideways,bearish}),[bearish,bullish,onDirectionChange,sideways]);
 
   return <main className="mx-auto max-w-[1440px] px-4 pb-8 pt-3 md:px-8 md:pb-12 md:pt-5">
     <section className="grid grid-cols-3 gap-2 sm:gap-4">
