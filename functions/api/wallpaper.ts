@@ -1,12 +1,12 @@
 type Candle={time:number;open:number;high:number;low:number;close:number;volume:number};
 type MarketResponse={symbol:string;interval:string;provider:string;updatedAt:string;ticker:{price:number;changePercent:number};candles:Candle[];indicators:{rsi:number|null;macd:number|null;signal:number|null;ema20:number|null;ema50:number|null;ema200:number|null;volumeChangePercent:number|null}};
-const symbols=new Set(['BTCUSDT','ETHUSDT']),intervals=new Set(['1m','5m','15m','1h','4h','1d']);
+const symbols=new Set(['KRX:005930','KRX:035720','KRX:000660','BTCUSDT','BTCKRW','ETHUSDT','XRPUSDT','NASDAQ:NVDA','NASDAQ:TSLA']),cryptoSymbols=new Set(['BTCUSDT','ETHUSDT','XRPUSDT']),intervals=new Set(['1m','5m','15m','1h','4h','1d']);
 
 export const onRequestGet:PagesFunction=async({request})=>{
   const url=new URL(request.url),symbol=(url.searchParams.get('symbol')||'BTCUSDT').toUpperCase(),interval=url.searchParams.get('interval')||'15m',theme=url.searchParams.get('theme')==='light'?'light':'dark',refresh=Math.min(60,Math.max(1,Number(url.searchParams.get('refresh'))||15));
   if(!symbols.has(symbol)||!intervals.has(interval))return new Response('Unsupported symbol or interval',{status:400});
   try{
-    const marketUrl=new URL('/api/market',url);marketUrl.searchParams.set('symbol',symbol);marketUrl.searchParams.set('interval',interval);marketUrl.searchParams.set('market','usdt');
+    const marketUrl=new URL('/api/market',url),marketSymbol=symbol==='BTCKRW'?'BTCUSDT':symbol;marketUrl.searchParams.set('symbol',marketSymbol);marketUrl.searchParams.set('interval',interval);if(symbol==='BTCKRW')marketUrl.searchParams.set('market','upbit');else if(cryptoSymbols.has(symbol))marketUrl.searchParams.set('market','usdt');
     const response=await fetch(marketUrl.toString(),{headers:{accept:'application/json'}});if(!response.ok)throw new Error(`Market API ${response.status}`);const market=await response.json() as MarketResponse;
     const png=await render(market,theme);return new Response(png,{headers:{'content-type':'image/png','content-disposition':`inline; filename="5waveflow-${symbol}-${interval}.png"`,'cache-control':`public, max-age=${Math.min(refresh*60,300)}, s-maxage=${refresh*60}`,'x-content-type-options':'nosniff','x-5waveflow-data-time':market.updatedAt}});
   }catch(error){return new Response(error instanceof Error?error.message:'Wallpaper unavailable',{status:502})}

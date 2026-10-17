@@ -1,4 +1,4 @@
-export const MARKET_SYMBOLS=['BTCUSDT','BTCKRW','ETHUSDT'] as const;
+export const MARKET_SYMBOLS=['KRX:005930','KRX:035720','KRX:000660','BTCUSDT','BTCKRW','ETHUSDT','XRPUSDT','NASDAQ:NVDA','NASDAQ:TSLA'] as const;
 export const MARKET_INTERVALS=['1m','5m','15m','1h','4h','1d'] as const;
 export type MarketSymbol=typeof MARKET_SYMBOLS[number];
 export type MarketInterval=typeof MARKET_INTERVALS[number];
@@ -9,10 +9,11 @@ export type MarketRequest={symbol:MarketSymbol;interval:MarketInterval};
 
 export function marketApiRequest(request:MarketRequest){
   if(request.symbol==='BTCKRW')return{symbol:'BTCUSDT',interval:request.interval,market:'upbit' as const};
-  return{symbol:request.symbol,interval:request.interval,market:'usdt' as const};
+  if(['BTCUSDT','ETHUSDT','XRPUSDT'].includes(request.symbol))return{symbol:request.symbol,interval:request.interval,market:'usdt' as const};
+  return{symbol:request.symbol,interval:request.interval};
 }
 
 export function wallpaperImagePath(request:MarketRequest&{theme:'dark'|'light';refreshMinutes:number}){
   const refresh=Math.min(60,Math.max(1,Math.round(request.refreshMinutes)));
-  return `/api/wallpaper?${new URLSearchParams({symbol:request.symbol==='BTCKRW'?'BTCUSDT':request.symbol,interval:request.interval,theme:request.theme,refresh:String(refresh)}).toString()}`;
+  return `/api/wallpaper?${new URLSearchParams({symbol:request.symbol,interval:request.interval,theme:request.theme,refresh:String(refresh)}).toString()}`;
 }

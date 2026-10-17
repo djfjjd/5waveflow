@@ -11,6 +11,7 @@ import {useSiteTheme} from '../lib/useSiteTheme';
 import type {MarketPayload} from '../types';
 
 const sharedShortcutUrl=appleShortcutShareUrl(import.meta.env.VITE_IOS_SHORTCUT_URL);
+const symbolLabels:Record<MarketSymbol,string>={'KRX:005930':'삼성전자','KRX:035720':'카카오','KRX:000660':'하이닉스',BTCUSDT:'비트코인/USDT',BTCKRW:'비트코인/원',ETHUSDT:'이더리움',XRPUSDT:'리플','NASDAQ:NVDA':'NVIDIA','NASDAQ:TSLA':'Tesla'};
 
 export default function Wallpaper(){
   const siteTheme=useSiteTheme();
@@ -23,7 +24,7 @@ export default function Wallpaper(){
   return <main className="theme-page mx-auto max-w-[1440px] px-4 py-6 md:px-8">
     <nav aria-label="배경화면 하위 메뉴" className="sticky top-16 z-30 mb-4 flex overflow-x-auto rounded-xl border border-[#26303d] bg-background/95 p-1.5 text-xs backdrop-blur"><SubMenu href="#preview">미리보기</SubMenu><SubMenu href="#customize">사용자 설정</SubMenu><SubMenu href="#presets">프리셋 안내</SubMenu><SubMenu href="#ios">iPhone 자동화</SubMenu><SubMenu href="#android">Android 적용</SubMenu></nav>
     <section id="customize" className="scroll-mt-32 mb-4 grid gap-3 rounded-xl border border-[#26303d] bg-surface/70 p-3 sm:grid-cols-2 lg:grid-cols-5">
-      <Control label="종목"><select value={symbol} onChange={event=>setSymbol(event.target.value as MarketSymbol)}>{MARKET_SYMBOLS.map(value=><option key={value}>{value}</option>)}</select></Control>
+      <Control label="종목"><select value={symbol} onChange={event=>setSymbol(event.target.value as MarketSymbol)}>{MARKET_SYMBOLS.map(value=><option key={value} value={value}>{symbolLabels[value]}</option>)}</select></Control>
       <Control label="시간봉"><select value={interval} onChange={event=>setInterval(event.target.value as MarketInterval)}>{MARKET_INTERVALS.map(value=><option key={value}>{value}</option>)}</select></Control>
       <Control label="프리셋"><select value={presetId} onChange={event=>setPresetId(event.target.value as WallpaperPresetId)}>{WALLPAPER_PRESETS.map(value=><option key={value.id} value={value.id}>{value.name}</option>)}</select></Control>
       <Control label="테마"><select value={theme} onChange={event=>setTheme(event.target.value as WallpaperTheme)}><option value="dark">Dark</option><option value="light">Light</option></select></Control>

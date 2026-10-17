@@ -10,4 +10,6 @@ describe('wallpaper contracts',()=>{
   it('ships the three required presets',()=>expect(WALLPAPER_PRESETS.map(item=>item.id)).toEqual(['minimal','professional','ai']));
   it('keeps direction values at exactly 100 percent',()=>{const market={indicators:{rsi:60,macd:2,signal:1,ema20:3,ema50:2,ema200:1,volumeChangePercent:20}} as unknown as MarketPayload;const scores=scenarioScores(market);expect(scores.bullish+scores.sideways+scores.bearish).toBe(100)});
   it('builds a bounded iOS shortcut image URL',()=>expect(wallpaperImagePath({symbol:'ETHUSDT',interval:'15m',theme:'dark',refreshMinutes:99})).toBe('/api/wallpaper?symbol=ETHUSDT&interval=15m&theme=dark&refresh=60'));
+  it('routes stock symbols without a crypto market override',()=>expect(marketApiRequest({symbol:'KRX:005930',interval:'1h'})).toEqual({symbol:'KRX:005930',interval:'1h'}));
+  it('preserves the KRW symbol in wallpaper image URLs',()=>expect(wallpaperImagePath({symbol:'BTCKRW',interval:'5m',theme:'light',refreshMinutes:5})).toContain('symbol=BTCKRW'));
 });
