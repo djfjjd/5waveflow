@@ -15,7 +15,7 @@ export const onRequestGet:PagesFunction=async({request})=>{
 async function render(market:MarketResponse,theme:'dark'|'light',displaySymbol:string,displayInterval:string){
   const width=1170,height=2535,pixels=new Uint8Array(width*height*4),background=theme==='dark'?[11,16,23]:[244,247,251],foreground=theme==='dark'?[255,255,255]:[17,24,39],muted=theme==='dark'?[139,149,165]:[82,96,113];fill(pixels,width,height,background);
   // Keep the top 600 px empty for the iOS Lock Screen clock and status area.
-  const left=72,right=1098,chartTop=960,top=1040,bottom=2200,price=formatPrice(market.ticker.price),change=`${market.ticker.changePercent>=0?'+':''}${market.ticker.changePercent.toFixed(2)}%`;
+  const left=72,right=1098,chartTop=980,top=1040,bottom=2200,price=formatPrice(market.ticker.price),change=`${market.ticker.changePercent>=0?'+':''}${market.ticker.changePercent.toFixed(2)}%`;
   text(pixels,width,left,chartTop,`${displaySymbol} ${displayInterval}`.toUpperCase(),muted,5);text(pixels,width,right-textWidth(price,7),chartTop,price,foreground,7);text(pixels,width,right-textWidth(change,5),chartTop+56,change,market.ticker.changePercent>=0?[0,200,150]:[255,92,112],5);
   const candles=market.candles.slice(-90),high=Math.max(...candles.map(c=>c.high)),low=Math.min(...candles.map(c=>c.low)),range=Math.max(high-low,.000001),step=(right-left)/Math.max(candles.length,1),y=(value:number)=>Math.round(top+(high-value)/range*(bottom-top));
   for(let i=0;i<=4;i++){const gy=Math.round(top+(bottom-top)*i/4);rect(pixels,width,left,gy,right-left,2,theme==='dark'?[27,36,48]:[220,226,234])}
