@@ -39,6 +39,6 @@ function Control({label,children}:{label:string;children:ReactNode}){return <lab
 function IOSShortcutSetup(){
   return <section id="ios" className="scroll-mt-32 mt-5 rounded-xl border border-[#26303d] bg-surface/70 p-5">
     <a href={sharedShortcutUrl} target="_blank" rel="noreferrer" className="inline-flex w-full justify-center rounded-lg bg-primary px-4 py-3 text-sm font-semibold text-white sm:w-auto">5WaveFlow 단축어 원클릭 설치</a>
-    <ol className="mt-4 grid gap-3 text-xs leading-5 text-neutral md:grid-cols-3"><li><strong className="text-white">1.</strong> 원클릭 설치 버튼을 누릅니다.</li><li><strong className="text-white">2.</strong> iCloud 공유 화면에서 단축어를 추가합니다.</li><li><strong className="text-white">3.</strong> 추가된 단축어를 실행하고 필요한 접근을 허용합니다.</li></ol>
+    <ol className="mt-4 grid gap-3 text-xs leading-5 text-neutral md:grid-cols-3"><li><strong className="text-white">1.</strong> 원클릭 설치 버튼을 누릅니다.</li><li><strong className="text-white">2.</strong> 단축어 앱 &gt; 자동화 탭 &gt; 우측 상단 + &gt; 특정 시간 선택 후 즉시 실행 체크 &gt; 다음 &gt; 차트배경화면 단축어 선택</li><li><strong className="text-white">3.</strong> 추가된 단축어를 실행하고 필요한 접근을 허용합니다.</li></ol>
   </section>
 }
