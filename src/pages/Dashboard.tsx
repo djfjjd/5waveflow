@@ -17,7 +17,7 @@ export default function Dashboard(){
   const bearish=active.data?directionScores.bearish:null;
   const chartSymbol=crypto?`${active.data?.provider==='Kraken Spot'?'KRAKEN':'BINANCE'}:${symbol}`:symbol;
 
-  return <main className="mx-auto max-w-[1440px] px-4 pb-8 pt-3 md:px-8 md:pb-12 md:pt-5">
+  return <main className="theme-page mx-auto max-w-[1440px] px-4 pb-8 pt-3 md:px-8 md:pb-12 md:pt-5">
     <section className="grid grid-cols-3 gap-0 sm:gap-4">
       <TradingViewQuoteCard symbol="BINANCE:BTCUSDT"/>
       <UpbitQuoteCard/>

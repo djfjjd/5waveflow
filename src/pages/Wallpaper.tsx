@@ -1,18 +1,21 @@
 import {MARKET_INTERVALS,MARKET_SYMBOLS,marketApiRequest,wallpaperImagePath,type MarketInterval,type MarketSymbol} from '@5waveflow/market-data';
 import {WALLPAPER_PRESETS,type WallpaperPresetId,type WallpaperTheme} from '@5waveflow/wallpaper';
 import {useQuery} from '@tanstack/react-query';
-import {useState,type ReactNode} from 'react';
+import {useEffect,useState,type ReactNode} from 'react';
 import WallpaperChart from '../components/WallpaperChart';
 import {getMarket} from '../lib/api';
 import {scenarioScores,type ScenarioScores} from '../lib/scenarioScores';
 import {downloadIPhoneWallpaper} from '../lib/wallpaperExport';
 import {appleShortcutShareUrl} from '../lib/shortcut';
+import {useSiteTheme} from '../lib/useSiteTheme';
 import type {MarketPayload} from '../types';
 
 const sharedShortcutUrl=appleShortcutShareUrl(import.meta.env.VITE_IOS_SHORTCUT_URL);
 
 export default function Wallpaper(){
-  const[symbol,setSymbol]=useState<MarketSymbol>('BTCUSDT'),[interval,setInterval]=useState<MarketInterval>('15m'),[theme,setTheme]=useState<WallpaperTheme>('dark'),[presetId,setPresetId]=useState<WallpaperPresetId>('ai'),[refreshMinutes,setRefreshMinutes]=useState(15);
+  const siteTheme=useSiteTheme();
+  const[symbol,setSymbol]=useState<MarketSymbol>('BTCUSDT'),[interval,setInterval]=useState<MarketInterval>('15m'),[theme,setTheme]=useState<WallpaperTheme>(siteTheme),[presetId,setPresetId]=useState<WallpaperPresetId>('ai'),[refreshMinutes,setRefreshMinutes]=useState(15);
+  useEffect(()=>setTheme(siteTheme),[siteTheme]);
   const preset=WALLPAPER_PRESETS.find(item=>item.id===presetId)!;
   const request=marketApiRequest({symbol,interval});
   const query=useQuery({queryKey:['wallpaper',symbol,interval],queryFn:()=>getMarket(request.symbol,request.interval,request.market),refetchInterval:refreshMinutes*60_000,staleTime:20_000});
