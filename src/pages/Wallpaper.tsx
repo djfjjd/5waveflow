@@ -4,7 +4,7 @@ import {useEffect,useState,type ReactNode} from 'react';
 import {appleShortcutShareUrl} from '../lib/shortcut';
 import {useSiteTheme} from '../lib/useSiteTheme';
 
-const sharedShortcutUrl=appleShortcutShareUrl(import.meta.env.VITE_IOS_SHORTCUT_URL);
+const sharedShortcutUrl=appleShortcutShareUrl(import.meta.env.VITE_IOS_SHORTCUT_URL)||'https://www.icloud.com/shortcuts/581d4185833647de8dee4e1a38f5a916';
 const symbolLabels:Record<MarketSymbol,string>={'KRX:005930':'삼성전자','KRX:035720':'카카오','KRX:000660':'하이닉스',BTCUSDT:'비트코인/USDT',BTCKRW:'비트코인/원',ETHUSDT:'이더리움',XRPUSDT:'리플','NASDAQ:NVDA':'NVIDIA','NASDAQ:TSLA':'Tesla'};
 
 export default function Wallpaper(){
@@ -27,7 +27,7 @@ export default function Wallpaper(){
     <nav aria-label="배경화면 하위 메뉴" className="sticky top-16 z-30 mb-4 flex overflow-x-auto rounded-xl border border-[#26303d] bg-background/95 p-1.5 text-xs backdrop-blur"><SubMenu href="#preview">미리보기</SubMenu><SubMenu href="#customize">사용자 설정</SubMenu><SubMenu href="#presets">프리셋 안내</SubMenu><SubMenu href="#ios">iPhone 자동화</SubMenu></nav>
     {symbol==='BTCKRW'&&<p className="mb-4 rounded-lg border border-warning/30 bg-warning/5 px-3 py-2 text-xs text-warning">개발 미리보기 · 상업 출시 전 Upbit 데이터 사용 승인이 필요합니다.</p>}
     <section id="presets" className="scroll-mt-32 mt-5 grid gap-3 md:grid-cols-3">{WALLPAPER_PRESETS.map(item=><button key={item.id} onClick={()=>setPresetId(item.id)} className={`rounded-xl border p-4 text-left transition ${presetId===item.id?'border-primary bg-primary/10':'border-[#26303d] bg-surface/60 hover:border-[#46566a]'}`}><div className="text-sm font-semibold">{item.name}</div><div className="mt-2 text-xs leading-5 text-neutral">{item.id==='minimal'?'가격과 캔들에 집중한 간결한 화면':item.id==='professional'?'가격축과 거래량을 함께 표시':'정량 분석 마커를 차트와 함께 표시'}</div></button>)}</section>
-    <IOSShortcutSetup imageUrl={imageUrl}/>
+    <IOSShortcutSetup/>
   </main>
 }
 
@@ -41,13 +41,9 @@ function DevicePreview({label,imageUrl,kind}:{label:string;imageUrl:string;kind:
 function Control({label,children}:{label:string;children:ReactNode}){return <label className="text-xs text-neutral"><span className="mb-1 block">{label}</span><div className="[&_select]:w-full [&_select]:rounded-lg [&_select]:border [&_select]:border-[#354252] [&_select]:bg-background [&_select]:px-3 [&_select]:py-2 [&_select]:text-white">{children}</div></label>}
 function SubMenu({href,children}:{href:string;children:ReactNode}){return <a href={href} className="shrink-0 rounded-lg px-3 py-2 text-neutral transition hover:bg-surface hover:text-white">{children}</a>}
 
-function IOSShortcutSetup({imageUrl}:{imageUrl:string}){
-  const[copied,setCopied]=useState(false);
-  const copy=()=>navigator.clipboard.writeText(imageUrl).then(()=>{setCopied(true);setTimeout(()=>setCopied(false),1500)}).catch(()=>undefined);
-  const startSetup=()=>{void copy();window.location.href='shortcuts://create-shortcut'};
+function IOSShortcutSetup(){
   return <section id="ios" className="scroll-mt-32 mt-5 rounded-xl border border-[#26303d] bg-surface/70 p-5">
-    {sharedShortcutUrl?<a href={sharedShortcutUrl} target="_blank" rel="noreferrer" className="inline-flex w-full justify-center rounded-lg bg-primary px-4 py-3 text-sm font-semibold text-white sm:w-auto">5WaveFlow 단축어 원클릭 설치</a>:<button type="button" onClick={startSetup} className="w-full rounded-lg bg-primary px-4 py-3 text-sm font-semibold text-white sm:w-auto">{copied?'복사됨':'URL 복사하기'}</button>}
-    <ol className="mt-4 grid gap-3 text-xs leading-5 text-neutral md:grid-cols-3"><li><strong className="text-white">1.</strong> `URL` 동작을 추가하고 복사된 주소를 붙여넣습니다.</li><li><strong className="text-white">2.</strong> `URL의 콘텐츠 가져오기`를 GET으로 추가합니다.</li><li><strong className="text-white">3.</strong> `배경화면 사진 설정`을 추가하고 단축어 이름을 `5WaveFlow Wallpaper`로 저장합니다.</li></ol>
-    <div className="mt-4"><a href="shortcuts://" className="inline-flex rounded-lg border border-[#354252] px-4 py-2 text-xs text-white">단축어 앱 열기</a></div>
+    <a href={sharedShortcutUrl} target="_blank" rel="noreferrer" className="inline-flex w-full justify-center rounded-lg bg-primary px-4 py-3 text-sm font-semibold text-white sm:w-auto">5WaveFlow 단축어 원클릭 설치</a>
+    <ol className="mt-4 grid gap-3 text-xs leading-5 text-neutral md:grid-cols-3"><li><strong className="text-white">1.</strong> 원클릭 설치 버튼을 누릅니다.</li><li><strong className="text-white">2.</strong> iCloud 공유 화면에서 단축어를 추가합니다.</li><li><strong className="text-white">3.</strong> 추가된 단축어를 실행하고 필요한 접근을 허용합니다.</li></ol>
   </section>
 }
