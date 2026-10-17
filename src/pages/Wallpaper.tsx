@@ -2,7 +2,6 @@ import {MARKET_INTERVALS,MARKET_SYMBOLS,marketApiRequest,wallpaperImagePath,type
 import {WALLPAPER_PRESETS,type WallpaperPresetId,type WallpaperTheme} from '@5waveflow/wallpaper';
 import {useQuery} from '@tanstack/react-query';
 import {useEffect,useState,type ReactNode} from 'react';
-import WallpaperChart from '../components/WallpaperChart';
 import {getMarket} from '../lib/api';
 import {scenarioScores,type ScenarioScores} from '../lib/scenarioScores';
 import {downloadIPhoneWallpaper} from '../lib/wallpaperExport';
@@ -17,27 +16,36 @@ export default function Wallpaper(){
   const siteTheme=useSiteTheme();
   const[symbol,setSymbol]=useState<MarketSymbol>('BTCUSDT'),[interval,setInterval]=useState<MarketInterval>('15m'),[theme,setTheme]=useState<WallpaperTheme>(siteTheme),[presetId,setPresetId]=useState<WallpaperPresetId>('ai'),[refreshMinutes,setRefreshMinutes]=useState(15);
   useEffect(()=>setTheme(siteTheme),[siteTheme]);
-  const preset=WALLPAPER_PRESETS.find(item=>item.id===presetId)!;
   const request=marketApiRequest({symbol,interval});
   const query=useQuery({queryKey:['wallpaper',symbol,interval],queryFn:()=>getMarket(request.symbol,request.interval,request.market),refetchInterval:refreshMinutes*60_000,staleTime:20_000});
   const market=query.data,scores=scenarioScores(market),imagePath=wallpaperImagePath({symbol,interval,theme,refreshMinutes}),imageUrl=typeof window==='undefined'?imagePath:`${window.location.origin}${imagePath}`;
   return <main className="theme-page mx-auto max-w-[1440px] px-4 py-6 md:px-8">
-    <nav aria-label="배경화면 하위 메뉴" className="sticky top-16 z-30 mb-4 flex overflow-x-auto rounded-xl border border-[#26303d] bg-background/95 p-1.5 text-xs backdrop-blur"><SubMenu href="#preview">미리보기</SubMenu><SubMenu href="#customize">사용자 설정</SubMenu><SubMenu href="#presets">프리셋 안내</SubMenu><SubMenu href="#ios">iPhone 자동화</SubMenu><SubMenu href="#android">Android 적용</SubMenu></nav>
-    <section id="customize" className="scroll-mt-32 mb-4 grid gap-3 rounded-xl border border-[#26303d] bg-surface/70 p-3 sm:grid-cols-2 lg:grid-cols-5">
+    <section id="preview" className="scroll-mt-32 grid grid-cols-2 gap-3 rounded-2xl border border-[#26303d] bg-surface/40 p-3 shadow-2xl sm:gap-8 sm:p-6">
+      <DevicePreview label="iPhone" imageUrl={imageUrl} kind="iphone" loading={query.isLoading}/>
+      <DevicePreview label="Android" imageUrl={imageUrl} kind="android" loading={query.isLoading}/>
+    </section>
+    <section id="customize" className="mt-4 scroll-mt-32 mb-4 grid gap-3 rounded-xl border border-[#26303d] bg-surface/70 p-3 sm:grid-cols-2 lg:grid-cols-5">
       <Control label="종목"><select value={symbol} onChange={event=>setSymbol(event.target.value as MarketSymbol)}>{MARKET_SYMBOLS.map(value=><option key={value} value={value}>{symbolLabels[value]}</option>)}</select></Control>
       <Control label="시간봉"><select value={interval} onChange={event=>setInterval(event.target.value as MarketInterval)}>{MARKET_INTERVALS.map(value=><option key={value}>{value}</option>)}</select></Control>
       <Control label="프리셋"><select value={presetId} onChange={event=>setPresetId(event.target.value as WallpaperPresetId)}>{WALLPAPER_PRESETS.map(value=><option key={value.id} value={value.id}>{value.name}</option>)}</select></Control>
       <Control label="테마"><select value={theme} onChange={event=>setTheme(event.target.value as WallpaperTheme)}><option value="dark">Dark</option><option value="light">Light</option></select></Control>
       <Control label="희망 갱신 간격"><select value={refreshMinutes} onChange={event=>setRefreshMinutes(Number(event.target.value))}>{[1,5,10,15,30,60].map(value=><option key={value} value={value}>{value}분</option>)}</select></Control>
     </section>
+    <nav aria-label="배경화면 하위 메뉴" className="sticky top-16 z-30 mb-4 flex overflow-x-auto rounded-xl border border-[#26303d] bg-background/95 p-1.5 text-xs backdrop-blur"><SubMenu href="#preview">미리보기</SubMenu><SubMenu href="#customize">사용자 설정</SubMenu><SubMenu href="#presets">프리셋 안내</SubMenu><SubMenu href="#ios">iPhone 자동화</SubMenu><SubMenu href="#android">Android 적용</SubMenu></nav>
     {symbol==='BTCKRW'&&<p className="mb-4 rounded-lg border border-warning/30 bg-warning/5 px-3 py-2 text-xs text-warning">개발 미리보기 · 상업 출시 전 Upbit 데이터 사용 승인이 필요합니다.</p>}
-    <section id="preview" className="scroll-mt-32 overflow-hidden rounded-2xl border border-[#26303d] shadow-2xl"><div className="relative aspect-[9/19.5] max-h-[900px] w-full md:aspect-video"><WallpaperChart market={market} theme={theme} showPriceScale={preset.showPriceScale} showVolume={preset.showVolume} showLogo={preset.showLogo} showAnalysis={preset.showAnalysis}/>{market&&<><div className={`pointer-events-none absolute bottom-5 left-5 ${theme==='dark'?'text-white':'text-[#111827]'}`}><div className="text-2xl font-semibold tabular-nums">{market.ticker.price.toLocaleString(undefined,{maximumFractionDigits:market.quoteCurrency==='KRW'?0:2})} {market.quoteCurrency}</div><div className={`mt-1 text-sm ${market.ticker.changePercent>=0?'text-bullish':'text-bearish'}`}>{market.ticker.changePercent>=0?'+':''}{market.ticker.changePercent.toFixed(2)}% · {market.provider}</div><div className="mt-1 text-[10px] opacity-60">{new Date(market.updatedAt).toLocaleString()}</div></div><div className={`pointer-events-none absolute right-3 top-12 rounded-xl border px-3 py-2 text-[10px] backdrop-blur-md sm:right-5 sm:top-5 sm:text-xs ${theme==='dark'?'border-white/10 bg-black/45 text-white':'border-black/10 bg-white/70 text-[#111827]'}`}><div className="mb-1 text-[9px] opacity-60">AI 정량 방향 분포</div><div className="flex gap-2 sm:gap-4"><span className="text-bullish">상승 {scores.bullish}%</span><span className="opacity-75">횡보 {scores.sideways}%</span><span className="text-bearish">하락 {scores.bearish}%</span></div></div></>}</div></section>
     <section id="presets" className="scroll-mt-32 mt-5 grid gap-3 md:grid-cols-3">{WALLPAPER_PRESETS.map(item=><button key={item.id} onClick={()=>setPresetId(item.id)} className={`rounded-xl border p-4 text-left transition ${presetId===item.id?'border-primary bg-primary/10':'border-[#26303d] bg-surface/60 hover:border-[#46566a]'}`}><div className="text-sm font-semibold">{item.name}</div><div className="mt-2 text-xs leading-5 text-neutral">{item.id==='minimal'?'가격과 캔들에 집중한 간결한 화면':item.id==='professional'?'가격축과 거래량을 함께 표시':'정량 분석 마커를 차트와 함께 표시'}</div></button>)}</section>
     <IOSShortcutSetup imageUrl={imageUrl} market={market} theme={theme} scores={scores} refreshing={query.isFetching} onRefresh={()=>query.refetch()}/>
     <section id="android" className="scroll-mt-32 mt-5 rounded-xl border border-[#26303d] bg-surface/70 p-5"><div className="label">ANDROID LIVE WALLPAPER</div><h2 className="mt-2 text-lg font-semibold">홈 화면에 적용</h2><p className="mt-3 text-xs leading-5 text-neutral">기존 Android 라이브 월페이퍼는 그대로 유지됩니다. 앱에서 설정한 뒤 시스템 미리보기로 적용하며 화면이 꺼지면 갱신을 중단합니다.</p></section>
     <section className="mt-5 rounded-xl border border-[#26303d] bg-surface/70 p-5"><div className="label">WIDGETKIT</div><h2 className="mt-2 text-lg font-semibold">iOS 위젯은 별도 기능</h2><p className="mt-3 text-xs leading-5 text-neutral">위젯은 배경화면 자동화와 분리해 PHASE C에서 구현합니다. WidgetKit 갱신 시각은 시스템 예산과 정책에 따라 달라지며 요청한 시간에 정확히 갱신된다고 보장할 수 없습니다.</p></section>
     <p className="mt-4 text-xs leading-5 text-neutral">브라우저 미리보기입니다. 실제 Android 라이브 월페이퍼는 네이티브 Canvas 렌더러가 화면 가시성과 절전 상태를 감지해 별도로 동작합니다.</p>
   </main>
+}
+
+function DevicePreview({label,imageUrl,kind,loading}:{label:string;imageUrl:string;kind:'iphone'|'android';loading:boolean}){
+  return <figure className="flex min-w-0 flex-col items-center"><figcaption className="mb-2 text-xs font-semibold text-neutral sm:text-sm">{label}</figcaption><div className={`relative aspect-[9/19.5] w-full max-w-[340px] overflow-hidden border-[5px] bg-black shadow-xl sm:border-[8px] ${kind==='iphone'?'rounded-[2rem] border-[#1d232c] sm:rounded-[3rem]':'rounded-[1.35rem] border-[#303742] sm:rounded-[2rem]'}`}>
+    {kind==='iphone'?<div className="absolute left-1/2 top-2 z-10 h-3 w-12 -translate-x-1/2 rounded-full bg-black sm:top-3 sm:h-5 sm:w-20"/>:<div className="absolute left-1/2 top-2 z-10 h-2 w-2 -translate-x-1/2 rounded-full bg-black/90 sm:top-3 sm:h-3 sm:w-3"/>}
+    {loading?<div className="flex h-full items-center justify-center bg-background text-[10px] text-neutral sm:text-xs">불러오는 중…</div>:<img src={imageUrl} alt={`${label} 5WaveFlow 배경화면 미리보기`} className="h-full w-full object-cover"/>}
+  </div></figure>
 }
 
 function Control({label,children}:{label:string;children:ReactNode}){return <label className="text-xs text-neutral"><span className="mb-1 block">{label}</span><div className="[&_select]:w-full [&_select]:rounded-lg [&_select]:border [&_select]:border-[#354252] [&_select]:bg-background [&_select]:px-3 [&_select]:py-2 [&_select]:text-white">{children}</div></label>}
