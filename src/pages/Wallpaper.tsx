@@ -9,21 +9,19 @@ const symbolLabels:Record<MarketSymbol,string>={'KRX:005930':'삼성전자','KRX
 
 export default function Wallpaper(){
   const siteTheme=useSiteTheme();
-  const[symbol,setSymbol]=useState<MarketSymbol>('BTCUSDT'),[interval,setInterval]=useState<MarketInterval>('15m'),[theme,setTheme]=useState<WallpaperTheme>(siteTheme),[refreshMinutes,setRefreshMinutes]=useState(15);
+  const[symbol,setSymbol]=useState<MarketSymbol>('BTCUSDT'),[interval,setInterval]=useState<MarketInterval>('15m'),[theme,setTheme]=useState<WallpaperTheme>(siteTheme);
   useEffect(()=>setTheme(siteTheme),[siteTheme]);
-  const imagePath=wallpaperImagePath({symbol,interval,theme,refreshMinutes}),imageUrl=typeof window==='undefined'?imagePath:`${window.location.origin}${imagePath}`;
+  const imagePath=wallpaperImagePath({symbol,interval,theme,refreshMinutes:15}),imageUrl=typeof window==='undefined'?imagePath:`${window.location.origin}${imagePath}`;
   return <main className="theme-page mx-auto max-w-[1440px] px-4 py-6 md:px-8">
     <section id="preview" className="scroll-mt-32 grid grid-cols-2 place-items-center gap-3 rounded-2xl border border-[#26303d] bg-surface/40 p-3 shadow-2xl sm:gap-6 sm:p-4">
       <DevicePreview label="iPhone" imageUrl={imageUrl} kind="iphone"/>
       <DevicePreview label="Galaxy" imageUrl={imageUrl} kind="android"/>
     </section>
-    <section id="customize" className="mt-4 scroll-mt-32 mb-4 grid gap-3 rounded-xl border border-[#26303d] bg-surface/70 p-3 sm:grid-cols-2 lg:grid-cols-4">
+    <section id="customize" className="mt-4 scroll-mt-32 mb-4 grid gap-3 rounded-xl border border-[#26303d] bg-surface/70 p-3 sm:grid-cols-3">
       <Control label="종목"><select value={symbol} onChange={event=>setSymbol(event.target.value as MarketSymbol)}>{MARKET_SYMBOLS.map(value=><option key={value} value={value}>{symbolLabels[value]}</option>)}</select></Control>
       <Control label="시간봉"><select value={interval} onChange={event=>setInterval(event.target.value as MarketInterval)}>{MARKET_INTERVALS.map(value=><option key={value}>{value}</option>)}</select></Control>
       <Control label="테마"><select value={theme} onChange={event=>setTheme(event.target.value as WallpaperTheme)}><option value="dark">Dark</option><option value="light">Light</option></select></Control>
-      <Control label="희망 갱신 간격"><select value={refreshMinutes} onChange={event=>setRefreshMinutes(Number(event.target.value))}>{[1,5,10,15,30,60].map(value=><option key={value} value={value}>{value}분</option>)}</select></Control>
     </section>
-    <nav aria-label="배경화면 하위 메뉴" className="sticky top-16 z-30 mb-4 flex overflow-x-auto rounded-xl border border-[#26303d] bg-background/95 p-1.5 text-xs backdrop-blur"><SubMenu href="#preview">미리보기</SubMenu><SubMenu href="#customize">사용자 설정</SubMenu><SubMenu href="#ios">iPhone 자동화</SubMenu></nav>
     {symbol==='BTCKRW'&&<p className="mb-4 rounded-lg border border-warning/30 bg-warning/5 px-3 py-2 text-xs text-warning">개발 미리보기 · 상업 출시 전 Upbit 데이터 사용 승인이 필요합니다.</p>}
     <IOSShortcutSetup/>
   </main>
@@ -36,8 +34,7 @@ function DevicePreview({label,imageUrl,kind}:{label:string;imageUrl:string;kind:
   </div></figure>
 }
 
-function Control({label,children}:{label:string;children:ReactNode}){return <label className="text-xs text-neutral"><span className="mb-1 block">{label}</span><div className="[&_select]:w-full [&_select]:rounded-lg [&_select]:border [&_select]:border-[#354252] [&_select]:bg-background [&_select]:px-3 [&_select]:py-2 [&_select]:text-white">{children}</div></label>}
-function SubMenu({href,children}:{href:string;children:ReactNode}){return <a href={href} className="shrink-0 rounded-lg px-3 py-2 text-neutral transition hover:bg-surface hover:text-white">{children}</a>}
+function Control({label,children}:{label:string;children:ReactNode}){return <label className="text-sm text-neutral md:text-base"><span className="mb-1.5 block font-medium">{label}</span><div className="[&_select]:w-full [&_select]:rounded-lg [&_select]:border [&_select]:border-[#354252] [&_select]:bg-background [&_select]:px-3 [&_select]:py-3 [&_select]:text-sm [&_select]:text-white md:[&_select]:text-base">{children}</div></label>}
 
 function IOSShortcutSetup(){
   return <section id="ios" className="scroll-mt-32 mt-5 rounded-xl border border-[#26303d] bg-surface/70 p-5">
