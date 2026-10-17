@@ -20,7 +20,7 @@ export default function TradingViewQuoteCard({symbol}:Props){
     script.src='https://s3.tradingview.com/external-embedding/embed-widget-single-quote.js';
     script.type='text/javascript';
     script.async=true;
-    script.textContent=JSON.stringify({symbol,width:'100%',height:'100%',isTransparent:true,colorTheme:theme,locale});
+    script.textContent=JSON.stringify({symbol,width:'100%',height:'100%',isTransparent:theme==='light',colorTheme:theme,locale});
     root.append(widget,script);
     return()=>root.replaceChildren();
   },[symbol,locale,theme]);
