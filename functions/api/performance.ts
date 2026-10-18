@@ -5,6 +5,7 @@ import type {Candle} from '../../src/types';
 
 interface Env { DB?:D1Database; CRON_SECRET?:string }
 type MarketPayload={provider:string;candles:Candle[];error?:string;detail?:string};
+const supportedSymbols=new Set(['KRX:005930','KRX:035720','KRX:000660','BTCUSDT','BTCKRW','ETHUSDT','XRPUSDT','NASDAQ:NVDA','NASDAQ:TSLA']);
 
 export const onRequest:PagesFunction<Env>=async context=>{
   if(context.request.method==='GET')return handle(context,false);
@@ -17,9 +18,9 @@ export const onRequest:PagesFunction<Env>=async context=>{
 
 async function handle({request,env}:EventContext<Env,never,unknown>,persist:boolean){
   const url=new URL(request.url),symbol=(url.searchParams.get('symbol')||'BTCUSDT').toUpperCase(),interval=url.searchParams.get('interval')||'15m';
-  if(!['BTCUSDT','BTCKRW'].includes(symbol)||!PERFORMANCE_INTERVALS.includes(interval as PerformanceInterval))return json({error:'Unsupported symbol or interval'},400);
+  if(!supportedSymbols.has(symbol)||!PERFORMANCE_INTERVALS.includes(interval as PerformanceInterval))return json({error:'Unsupported symbol or interval'},400);
   try{
-    const marketUrl=new URL('/api/market',url);marketUrl.searchParams.set('symbol',symbol==='BTCKRW'?'BTCUSDT':symbol);marketUrl.searchParams.set('interval',interval);marketUrl.searchParams.set('market',symbol==='BTCKRW'?'upbit':'usdt');
+    const marketUrl=new URL('/api/market',url),crypto=!symbol.includes(':');marketUrl.searchParams.set('symbol',symbol==='BTCKRW'?'BTCUSDT':symbol);marketUrl.searchParams.set('interval',interval);if(symbol==='BTCKRW')marketUrl.searchParams.set('market','upbit');else if(crypto)marketUrl.searchParams.set('market','usdt');
     const response=await fetch(marketUrl.toString(),{headers:{accept:'application/json'}}),market=await response.json() as MarketPayload;
     if(!response.ok)throw new Error(market.detail||market.error||`Market API ${response.status}`);
     const candles=closedCandles(market.candles,interval as PerformanceInterval),results=buildBacktest(symbol,interval as PerformanceInterval,candles,30);
