@@ -1,0 +1,3 @@
+export interface Env { SITE_ORIGIN:string;CRON_SECRET:string }
+const intervals=['15m','1h','4h','1d'],symbols=['BTCUSDT','BTCKRW'];
+export default{async scheduled(_controller:ScheduledController,env:Env,ctx:ExecutionContext){ctx.waitUntil(Promise.all(symbols.flatMap(symbol=>intervals.map(async interval=>{const url=new URL('/api/performance',env.SITE_ORIGIN);url.searchParams.set('symbol',symbol);url.searchParams.set('interval',interval);const response=await fetch(url,{method:'POST',headers:{authorization:`Bearer ${env.CRON_SECRET}`}});if(!response.ok)throw new Error(`Performance refresh ${symbol} ${interval}: ${response.status}`)}))))}};
