@@ -8,5 +8,6 @@
 .performance-cell-hit{background:rgba(0,200,150,.09)}.performance-cell-miss{background:rgba(255,92,112,.09)}.performance-cell-hit:hover{background:rgba(0,200,150,.16)}.performance-cell-miss:hover{background:rgba(255,92,112,.16)}[data-theme=light] .performance-cell-hit{background:#e7f8ec}[data-theme=light] .performance-cell-miss{background:#fde8ed}[data-theme=light] .performance-cell-hit:hover{background:#d9f3e1}[data-theme=light] .performance-cell-miss:hover{background:#fbd9e1}
 .performance-row-number{background:rgba(21,27,35,.7)}[data-theme=light] .performance-row-number{background:#fff;color:#111827}
 .performance-actual-mark{position:relative}.performance-actual-mark:after{position:absolute;inset:-4px -5px;border:1px solid #ef4444;border-radius:999px;content:'';pointer-events:none}
+@media(max-width:639px){.performance-cell-content{width:181.818%;transform:scale(.55);transform-origin:left center}.performance-actual-mark:after{inset:-3px -4px}}
 @media(min-width:1280px){.max-w-\[1440px\]{max-width:1180px!important}.max-w-\[1200px\]{max-width:1100px!important}}
 @media(min-width:1440px){:root{font-size:15px}}
