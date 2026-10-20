@@ -4,6 +4,7 @@ import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.Rect
+import androidx.core.graphics.withSave
 import com.fivewaveflow.live.data.MarketSnapshot
 import com.fivewaveflow.live.data.WallpaperConfig
 import kotlin.math.max
@@ -12,7 +13,10 @@ import kotlin.math.min
 class ChartRenderer {
     private val paint=Paint(Paint.ANTI_ALIAS_FLAG)
     fun draw(canvas:Canvas,bounds:Rect,snapshot:MarketSnapshot?,config:WallpaperConfig,error:Boolean=false){
-        val dark=config.theme=="dark";canvas.drawColor(Color.parseColor(if(dark)"#0B1017" else "#F4F7FB"));paint.color=Color.parseColor(if(dark)"#FFFFFF" else "#111827");paint.textSize=bounds.width()*.045f;paint.isFakeBoldText=true;canvas.drawText("5WaveFlow Live",bounds.width()*.06f,bounds.height()*.1f,paint)
+        val dark=config.theme=="dark";canvas.drawColor(Color.parseColor(if(dark)"#0B1017" else "#F4F7FB"));canvas.withSave{clipRect(bounds);translate(bounds.left.toFloat(),bounds.top.toFloat());drawContent(this,Rect(0,0,bounds.width(),bounds.height()),snapshot,config,error)}
+    }
+    private fun drawContent(canvas:Canvas,bounds:Rect,snapshot:MarketSnapshot?,config:WallpaperConfig,error:Boolean){
+        val dark=config.theme=="dark";paint.color=Color.parseColor(if(dark)"#FFFFFF" else "#111827");paint.textSize=bounds.width()*.045f;paint.isFakeBoldText=true;canvas.drawText("5WaveFlow Live",bounds.width()*.06f,bounds.height()*.1f,paint)
         if(snapshot==null){paint.textSize=bounds.width()*.032f;paint.isFakeBoldText=false;paint.color=Color.parseColor(if(error)"#FF5C70" else "#8B95A5");canvas.drawText(if(error)"Market data unavailable" else "Connecting…",bounds.width()*.06f,bounds.height()*.16f,paint);return}
         paint.textSize=bounds.width()*.07f;paint.color=Color.parseColor(if(dark)"#FFFFFF" else "#111827");canvas.drawText(String.format("%,.2f",snapshot.price),bounds.width()*.06f,bounds.height()*.18f,paint);paint.textSize=bounds.width()*.032f;paint.color=Color.parseColor(if(snapshot.changePercent>=0)"#00C896" else "#FF5C70");canvas.drawText(String.format("%+.2f%% · %s",snapshot.changePercent,snapshot.provider),bounds.width()*.06f,bounds.height()*.225f,paint)
         paint.textSize=bounds.width()*.029f;paint.isFakeBoldText=true;paint.color=Color.parseColor("#00C896");canvas.drawText("UP ${snapshot.scores.bullish}%",bounds.width()*.06f,bounds.height()*.265f,paint);paint.color=Color.parseColor("#8B95A5");canvas.drawText("FLAT ${snapshot.scores.sideways}%",bounds.width()*.35f,bounds.height()*.265f,paint);paint.color=Color.parseColor("#FF5C70");canvas.drawText("DOWN ${snapshot.scores.bearish}%",bounds.width()*.68f,bounds.height()*.265f,paint);paint.isFakeBoldText=false

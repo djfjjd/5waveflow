@@ -3,25 +3,25 @@ type MarketResponse={symbol:string;interval:string;provider:string;updatedAt:str
 const symbols=new Set(['KRX:005930','KRX:035720','KRX:000660','BTCUSDT','BTCKRW','ETHUSDT','XRPUSDT','NASDAQ:NVDA','NASDAQ:TSLA']),cryptoSymbols=new Set(['BTCUSDT','ETHUSDT','XRPUSDT']),intervals=new Set(['1m','5m','15m','1h','4h','1d']);
 
 export const onRequestGet:PagesFunction=async({request})=>{
-  const url=new URL(request.url),symbol=(url.searchParams.get('symbol')||'BTCUSDT').toUpperCase(),interval=url.searchParams.get('interval')||'15m',theme=url.searchParams.get('theme')==='light'?'light':'dark',refresh=Math.min(60,Math.max(1,Number(url.searchParams.get('refresh'))||15));
+  const url=new URL(request.url),symbol=(url.searchParams.get('symbol')||'BTCUSDT').toUpperCase(),interval=url.searchParams.get('interval')||'15m',theme=url.searchParams.get('theme')==='light'?'light':'dark',device=url.searchParams.get('device')==='android'?'android':'ios',refresh=Math.min(60,Math.max(1,Number(url.searchParams.get('refresh'))||15));
   if(!symbols.has(symbol)||!intervals.has(interval))return new Response('Unsupported symbol or interval',{status:400});
   try{
     const marketUrl=new URL('/api/market',url),marketSymbol=symbol==='BTCKRW'?'BTCUSDT':symbol;marketUrl.searchParams.set('symbol',marketSymbol);marketUrl.searchParams.set('interval',interval);if(symbol==='BTCKRW')marketUrl.searchParams.set('market','upbit');else if(cryptoSymbols.has(symbol))marketUrl.searchParams.set('market','usdt');
     const response=await fetch(marketUrl.toString(),{headers:{accept:'application/json'}});if(!response.ok)throw new Error(`Market API ${response.status}`);const market=await response.json() as MarketResponse;
-    const png=await render(market,theme,symbol,interval);return new Response(png,{headers:{'content-type':'image/png','content-disposition':`inline; filename="5waveflow-${symbol}-${interval}.png"`,'cache-control':`public, max-age=${Math.min(refresh*60,300)}, s-maxage=${refresh*60}`,'x-content-type-options':'nosniff','x-5waveflow-data-time':market.updatedAt}});
+    const png=await render(market,theme,symbol,interval,device);return new Response(png,{headers:{'content-type':'image/png','content-disposition':`inline; filename="5waveflow-${symbol}-${interval}-${device}.png"`,'cache-control':`public, max-age=${Math.min(refresh*60,300)}, s-maxage=${refresh*60}`,'x-content-type-options':'nosniff','x-5waveflow-data-time':market.updatedAt,'x-5waveflow-wallpaper-size':device==='android'?'1080x2400':'1290x2796'}});
   }catch(error){return new Response(error instanceof Error?error.message:'Wallpaper unavailable',{status:502})}
 };
 
-async function render(market:MarketResponse,theme:'dark'|'light',displaySymbol:string,displayInterval:string){
-  const width=1170,height=2535,pixels=new Uint8Array(width*height*4),background=theme==='dark'?[11,16,23]:[244,247,251],foreground=theme==='dark'?[255,255,255]:[17,24,39],muted=theme==='dark'?[139,149,165]:[82,96,113];fill(pixels,width,height,background);
+async function render(market:MarketResponse,theme:'dark'|'light',displaySymbol:string,displayInterval:string,device:'ios'|'android'){
+  const {width,height}=device==='android'?{width:1080,height:2400}:{width:1290,height:2796},sx=width/1170,sy=height/2535,px=(value:number)=>Math.round(value*sx),py=(value:number)=>Math.round(value*sy),font=(value:number)=>Math.max(1,Math.round(value*sx)),pixels=new Uint8Array(width*height*4),background=theme==='dark'?[11,16,23]:[244,247,251],foreground=theme==='dark'?[255,255,255]:[17,24,39],muted=theme==='dark'?[139,149,165]:[82,96,113];fill(pixels,width,height,background);
   // Keep the top 600 px empty for the iOS Lock Screen clock and status area.
-  const left=72,right=1098,chartTop=980,top=1040,bottom=2200,price=formatPrice(market.ticker.price),change=`${market.ticker.changePercent>=0?'+':''}${market.ticker.changePercent.toFixed(2)}%`;
-  text(pixels,width,left,chartTop,`${displaySymbol} ${displayInterval}`.toUpperCase(),muted,5);text(pixels,width,right-textWidth(price,7),chartTop,price,foreground,7);text(pixels,width,right-textWidth(change,5),chartTop+56,change,market.ticker.changePercent>=0?[0,200,150]:[255,92,112],5);
+  const left=px(72),right=px(1098),chartTop=py(980),top=py(1040),bottom=py(2200),price=formatPrice(market.ticker.price),change=`${market.ticker.changePercent>=0?'+':''}${market.ticker.changePercent.toFixed(2)}%`,small=font(5),large=font(7);
+  text(pixels,width,left,chartTop,`${displaySymbol} ${displayInterval}`.toUpperCase(),muted,small);text(pixels,width,right-textWidth(price,large),chartTop,price,foreground,large);text(pixels,width,right-textWidth(change,small),chartTop+py(56),change,market.ticker.changePercent>=0?[0,200,150]:[255,92,112],small);
   const candles=market.candles.slice(-90),high=Math.max(...candles.map(c=>c.high)),low=Math.min(...candles.map(c=>c.low)),range=Math.max(high-low,.000001),step=(right-left)/Math.max(candles.length,1),y=(value:number)=>Math.round(top+(high-value)/range*(bottom-top));
-  for(let i=0;i<=4;i++){const gy=Math.round(top+(bottom-top)*i/4);rect(pixels,width,left,gy,right-left,2,theme==='dark'?[27,36,48]:[220,226,234])}
+  for(let i=0;i<=4;i++){const gy=Math.round(top+(bottom-top)*i/4);rect(pixels,width,left,gy,right-left,Math.max(1,py(2)),theme==='dark'?[27,36,48]:[220,226,234])}
   candles.forEach((c,index)=>{const x=Math.round(left+step*(index+.5)),color=c.close>=c.open?[0,200,150]:[255,92,112];rect(pixels,width,x-1,y(c.high),3,Math.max(2,y(c.low)-y(c.high)),color);rect(pixels,width,Math.round(x-step*.28),Math.min(y(c.open),y(c.close)),Math.max(3,Math.round(step*.56)),Math.max(3,Math.abs(y(c.open)-y(c.close))),color)});
-  const score=directionScores(market.indicators),scoreOffsetX=25;[[`↗ ${score.up}%`,[0,200,150]],[`→ ${score.flat}%`,muted],[`↘ ${score.down}%`,[255,92,112]]].forEach(([label,color],index)=>{const value=label as string;vectorText(pixels,width,Math.round((width-vectorTextWidth(value,8))/2)+scoreOffsetX,1450+index*72,value,color as RGB,8)});
-  const logo='5WAVEFLOW',timestamp=formatTimestamp(market.updatedAt);text(pixels,width,right-textWidth(timestamp,5),2085,timestamp,muted,5);text(pixels,width,right-textWidth(logo,5),2135,logo,muted,5);return encodePng(width,height,pixels);
+  const score=directionScores(market.indicators),scoreScale=font(8),scoreOffsetX=px(25);[[`↗ ${score.up}%`,[0,200,150]],[`→ ${score.flat}%`,muted],[`↘ ${score.down}%`,[255,92,112]]].forEach(([label,color],index)=>{const value=label as string;vectorText(pixels,width,Math.round((width-vectorTextWidth(value,scoreScale))/2)+scoreOffsetX,py(1450+index*72),value,color as RGB,scoreScale)});
+  const logo='5WAVEFLOW',timestamp=formatTimestamp(market.updatedAt);text(pixels,width,right-textWidth(timestamp,small),py(2085),timestamp,muted,small);text(pixels,width,right-textWidth(logo,small),py(2135),logo,muted,small);return encodePng(width,height,pixels);
 }
 
 type RGB=number[];

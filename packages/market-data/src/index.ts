@@ -13,7 +13,9 @@ export function marketApiRequest(request:MarketRequest){
   return{symbol:request.symbol,interval:request.interval};
 }
 
-export function wallpaperImagePath(request:MarketRequest&{theme:'dark'|'light';refreshMinutes:number}){
+export type WallpaperDevice='ios'|'android';
+
+export function wallpaperImagePath(request:MarketRequest&{theme:'dark'|'light';refreshMinutes:number;device?:WallpaperDevice}){
   const refresh=Math.min(60,Math.max(1,Math.round(request.refreshMinutes)));
-  return `/api/wallpaper?${new URLSearchParams({symbol:request.symbol,interval:request.interval,theme:request.theme,refresh:String(refresh)}).toString()}`;
+  return `/api/wallpaper?${new URLSearchParams({symbol:request.symbol,interval:request.interval,theme:request.theme,refresh:String(refresh),...(request.device?{device:request.device}:{})}).toString()}`;
 }

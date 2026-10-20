@@ -12,4 +12,8 @@ describe('wallpaper contracts',()=>{
   it('builds a bounded iOS shortcut image URL',()=>expect(wallpaperImagePath({symbol:'ETHUSDT',interval:'15m',theme:'dark',refreshMinutes:99})).toBe('/api/wallpaper?symbol=ETHUSDT&interval=15m&theme=dark&refresh=60'));
   it('routes stock symbols without a crypto market override',()=>expect(marketApiRequest({symbol:'KRX:005930',interval:'1h'})).toEqual({symbol:'KRX:005930',interval:'1h'}));
   it('preserves the KRW symbol in wallpaper image URLs',()=>expect(wallpaperImagePath({symbol:'BTCKRW',interval:'5m',theme:'light',refreshMinutes:5})).toContain('symbol=BTCKRW'));
+  it('requests a device-specific wallpaper without changing legacy URLs',()=>{
+    expect(wallpaperImagePath({symbol:'BTCUSDT',interval:'15m',theme:'dark',refreshMinutes:15,device:'android'})).toContain('device=android');
+    expect(wallpaperImagePath({symbol:'BTCUSDT',interval:'15m',theme:'dark',refreshMinutes:15})).not.toContain('device=');
+  });
 });

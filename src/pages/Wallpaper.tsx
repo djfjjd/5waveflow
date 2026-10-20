@@ -11,11 +11,11 @@ export default function Wallpaper(){
   const siteTheme=useSiteTheme();
   const[symbol,setSymbol]=useState<MarketSymbol>('BTCUSDT'),[interval,setInterval]=useState<MarketInterval>('15m'),[theme,setTheme]=useState<WallpaperTheme>(siteTheme);
   useEffect(()=>setTheme(siteTheme),[siteTheme]);
-  const imagePath=wallpaperImagePath({symbol,interval,theme,refreshMinutes:15}),imageUrl=typeof window==='undefined'?imagePath:`${window.location.origin}${imagePath}`;
+  const imageUrl=(device:'ios'|'android')=>{const path=wallpaperImagePath({symbol,interval,theme,refreshMinutes:15,device});return typeof window==='undefined'?path:`${window.location.origin}${path}`};
   return <main className="theme-page mx-auto max-w-[1440px] px-4 py-6 md:px-8">
     <section id="preview" className="scroll-mt-32 grid grid-cols-2 place-items-center gap-3 rounded-2xl border border-[#26303d] bg-surface/40 p-3 shadow-2xl sm:gap-6 sm:p-4">
-      <DevicePreview label="iPhone" imageUrl={imageUrl} kind="iphone"/>
-      <DevicePreview label="Galaxy" imageUrl={imageUrl} kind="android"/>
+      <DevicePreview label="iPhone" imageUrl={imageUrl('ios')} kind="iphone"/>
+      <DevicePreview label="Galaxy" imageUrl={imageUrl('android')} kind="android"/>
     </section>
     <section id="customize" className="mt-4 scroll-mt-32 mb-4 grid gap-3 rounded-xl border border-[#26303d] bg-surface/70 p-3 sm:grid-cols-3">
       <Control label="종목"><select value={symbol} onChange={event=>setSymbol(event.target.value as MarketSymbol)}>{MARKET_SYMBOLS.map(value=><option key={value} value={value}>{symbolLabels[value]}</option>)}</select></Control>
@@ -30,7 +30,7 @@ export default function Wallpaper(){
 function DevicePreview({label,imageUrl,kind}:{label:string;imageUrl:string;kind:'iphone'|'android'}){
   return <figure className="flex min-w-0 flex-col items-center"><figcaption className="mb-2 text-xs font-semibold text-neutral sm:text-sm">{label}</figcaption><div className={`relative w-[34vw] max-w-[210px] overflow-hidden border-[4px] bg-black shadow-xl sm:border-[6px] ${kind==='iphone'?'aspect-[9/19.5] rounded-[1.6rem] border-[#1d232c] sm:rounded-[2.4rem]':'aspect-[9/20] rounded-[1.1rem] border-[#303742] sm:rounded-[1.7rem]'}`}>
     {kind==='iphone'?<div className="absolute left-1/2 top-2 z-10 h-3 w-12 -translate-x-1/2 rounded-full bg-black sm:top-3 sm:h-5 sm:w-20"/>:<div className="absolute left-1/2 top-2 z-10 h-2 w-2 -translate-x-1/2 rounded-full bg-black/90 sm:top-3 sm:h-3 sm:w-3"/>}
-    <img src={imageUrl} alt={`${label} 5WaveFlow 배경화면 미리보기`} className="h-full w-full object-cover"/>
+    <img src={imageUrl} alt={`${label} 5WaveFlow 배경화면 미리보기`} className="h-full w-full object-contain"/>
   </div></figure>
 }
 
