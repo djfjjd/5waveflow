@@ -37,6 +37,15 @@ D1 연결 전에도 공개 시장 데이터 페이지와 Functions는 배포되�
 
 Cloudflare Zero Trust에서 `/admin*`, `/api/admin*`을 보호하는 Access Application을 만들고 Pages 환경변수 `CF_ACCESS_TEAM_DOMAIN`, `CF_ACCESS_AUD`를 설정해야 합니다. 설정 전 관리자 API는 503으로 닫힙니다. 관리자 API는 Access JWKS의 RS256 서명, issuer, audience, 만료 시각을 서버에서 검증합니다.
 
+### SNS 원클릭 업로드
+
+`/admin/publish`는 선택한 SNS 채널, 공개 HTTPS 미디어 URL, 제목, 본문을 발행 Webhook으로 한 번에 전달합니다. Cloudflare Pages 프로젝트에 아래 두 값을 **Encrypt**로 추가하세요.
+
+- `SNS_PUBLISH_WEBHOOK_URL`: Cloudflare Worker, Make 또는 n8n의 HTTPS 발행 엔드포인트
+- `SNS_PUBLISH_WEBHOOK_TOKEN`: Webhook이 `Authorization: Bearer ...`로 검증할 긴 임의 문자열
+
+Webhook은 `jobId`, `platforms`, `mediaUrl`, `title`, `caption`, `requestedAt` JSON을 받고 성공 시 HTTP 2xx를 반환해야 합니다. 실제 게시를 위해 Webhook 측에 Meta(Instagram·Threads), Google(YouTube), TikTok, X 계정 OAuth 토큰과 각 플랫폼 게시 권한을 연결합니다. 플랫폼 토큰은 프런트엔드나 이 저장소에 넣지 마세요.
+
 ## Current scope
 
 - Binance 공개 시장 데이터 API 기반 BTC/ETH 24시간 시세 및 최근 500개 OHLCV, Cloudflare 환경에서 Binance가 차단될 경우 Upbit KRW OHLCV 자동 폴백
@@ -53,7 +62,7 @@ Cloudflare Zero Trust에서 `/admin*`, `/api/admin*`을 보호하는 Access Appl
 - RSI, MACD, EMA, ATR, Bollinger 계산 기반
 - Elliott/Wyckoff는 확정 판정이 아닌 후보 설명만 제공
 - 검증된 모델이 없으므로 상승/횡보/하락 확률은 의도적으로 미표시
-- 주식, 영상 렌더링, SNS OAuth/게시, 유료 구독은 준비 중 상태
+- 주식, 영상 렌더링, 유료 구독은 준비 중 상태. SNS 게시는 관리자 Webhook 연동 방식 제공
 
 SNS API는 플랫폼별 앱 심사와 권한이 필요합니다. Instagram은 Meta App/Instagram Graph API, YouTube는 Google OAuth 및 YouTube Data API, TikTok은 Content Posting API 승인, X는 API 쓰기 권한, Threads는 Meta Threads API 권한을 준비해야 합니다.
 
