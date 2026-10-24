@@ -39,10 +39,14 @@ Cloudflare Zero Trust에서 `/admin*`, `/api/admin*`을 보호하는 Access Appl
 
 ### SNS 원클릭 업로드
 
-`/admin/publish`는 선택한 SNS 채널, 공개 HTTPS 미디어 URL, 제목, 본문을 발행 Webhook으로 한 번에 전달합니다. Cloudflare Pages 프로젝트에 아래 두 값을 **Encrypt**로 추가하세요.
+`/admin/publish`는 선택한 SNS 채널, 공개 HTTPS 미디어 URL, 제목, 본문을 발행 Webhook으로 한 번에 전달합니다. 브라우저가 호출하는 `POST /api/admin/publish`는 기존 Cloudflare Access JWT를 검증합니다. 외부 자동화가 호출할 수 있는 Pages Functions 수신 주소는 `POST /api/sns/webhook`이며 `Authorization: Bearer <SNS_PUBLISH_WEBHOOK_TOKEN>`을 검증합니다.
 
-- `SNS_PUBLISH_WEBHOOK_URL`: Cloudflare Worker, Make 또는 n8n의 HTTPS 발행 엔드포인트
-- `SNS_PUBLISH_WEBHOOK_TOKEN`: Webhook이 `Authorization: Bearer ...`로 검증할 긴 임의 문자열
+두 엔드포인트는 동일한 검증·전달 코드를 사용하므로 서로를 호출하지 않습니다. `SNS_PUBLISH_WEBHOOK_URL`이 현재 Pages origin 또는 `/api/admin/publish`, `/api/sns/webhook` 경로를 가리키면 반복 호출 방지를 위해 요청을 거부합니다.
+
+Cloudflare Pages 프로젝트에 아래 두 값을 **Encrypt**로 추가하세요.
+
+- `SNS_PUBLISH_WEBHOOK_URL`: Make, n8n 또는 실제 SNS 게시 처리기의 외부 HTTPS 엔드포인트. 현재 Pages 프로젝트 주소는 사용할 수 없습니다.
+- `SNS_PUBLISH_WEBHOOK_TOKEN`: 최소 32자의 임의 문자열. 수신 Webhook 인증과 외부 발행 요청의 Bearer 인증에 사용합니다.
 
 Webhook은 `jobId`, `platforms`, `mediaUrl`, `title`, `caption`, `requestedAt` JSON을 받고 성공 시 HTTP 2xx를 반환해야 합니다. 실제 게시를 위해 Webhook 측에 Meta(Instagram·Threads), Google(YouTube), TikTok, X 계정 OAuth 토큰과 각 플랫폼 게시 권한을 연결합니다. 플랫폼 토큰은 프런트엔드나 이 저장소에 넣지 마세요.
 
