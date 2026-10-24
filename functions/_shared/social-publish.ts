@@ -17,10 +17,16 @@ export async function forwardPublish(payload:PublishPayload,request:Request,env:
   if(!env.SNS_PUBLISH_WEBHOOK_URL||!env.SNS_PUBLISH_WEBHOOK_TOKEN||env.SNS_PUBLISH_WEBHOOK_TOKEN.length<32)return json({error:'SNS 발행 Webhook이 설정되지 않았거나 토큰이 너무 짧습니다. 관리자에게 문의하세요.'},503);
   const target=safeTarget(env.SNS_PUBLISH_WEBHOOK_URL,request.url);
   if(!target)return json({error:'SNS 발행 Webhook URL이 현재 Pages 발행 API를 가리키거나 올바르지 않습니다.'},503);
-  const upstream=await fetch(target,{method:'POST',headers:{'content-type':'application/json','authorization':`Bearer ${env.SNS_PUBLISH_WEBHOOK_TOKEN}`,'x-idempotency-key':payload.jobId,'user-agent':'5waveflow-pages-publisher/1.0'},body:JSON.stringify(payload),signal:AbortSignal.timeout(25_000)}).catch(()=>null);
+  const upstream=await fetch(target,{method:'POST',headers:{'content-type':'application/json',...webhookAuthHeaders(target,env.SNS_PUBLISH_WEBHOOK_TOKEN),'x-idempotency-key':payload.jobId,'user-agent':'5waveflow-pages-publisher/1.0'},body:JSON.stringify(payload),signal:AbortSignal.timeout(25_000)}).catch(()=>null);
   if(!upstream)return json({error:'SNS 발행 서비스에 연결할 수 없습니다.'},502);
-  if(!upstream.ok){const detail=await upstream.text().catch(()=>'');return json({error:'SNS 발행 서비스가 요청을 거절했습니다.',detail:detail.slice(0,300)},502)}
+  if(!upstream.ok)return json({error:'SNS 발행 서비스가 요청을 거절했습니다.'},502);
   return json({ok:true,jobId:payload.jobId,platforms:payload.platforms,message:'선택한 SNS 채널로 업로드 요청을 전송했습니다.'},202);
+}
+
+export function webhookAuthHeaders(target:string,token:string):Record<string,string>{
+  const hostname=new URL(target).hostname.toLowerCase();
+  const isMake=hostname==='hook.make.com'||/^hook\.[a-z0-9-]+\.make\.com$/.test(hostname);
+  return isMake?{'x-make-apikey':token}:{authorization:`Bearer ${token}`};
 }
 
 export function safeTarget(value:string,requestUrl:string){

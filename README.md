@@ -46,7 +46,7 @@ Cloudflare Zero Trust에서 `/admin*`, `/api/admin*`을 보호하는 Access Appl
 Cloudflare Pages 프로젝트에 아래 두 값을 **Encrypt**로 추가하세요.
 
 - `SNS_PUBLISH_WEBHOOK_URL`: Make, n8n 또는 실제 SNS 게시 처리기의 외부 HTTPS 엔드포인트. 현재 Pages 프로젝트 주소는 사용할 수 없습니다.
-- `SNS_PUBLISH_WEBHOOK_TOKEN`: 최소 32자의 임의 문자열. 수신 Webhook 인증과 외부 발행 요청의 Bearer 인증에 사용합니다.
+- `SNS_PUBLISH_WEBHOOK_TOKEN`: 최소 32자의 임의 문자열. `/api/sns/webhook` 수신 Bearer 인증에 사용하며, Make Custom Webhook 전송 시에는 `x-make-apikey` 헤더로 전달합니다. Make 이외의 Webhook에는 Bearer 인증을 유지합니다.
 
 Webhook은 `jobId`, `platforms`, `mediaUrl`, `title`, `caption`, `requestedAt` JSON을 받고 성공 시 HTTP 2xx를 반환해야 합니다. 실제 게시를 위해 Webhook 측에 Meta(Instagram·Threads), Google(YouTube), TikTok, X 계정 OAuth 토큰과 각 플랫폼 게시 권한을 연결합니다. 플랫폼 토큰은 프런트엔드나 이 저장소에 넣지 마세요.
 

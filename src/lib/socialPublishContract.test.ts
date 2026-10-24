@@ -1,5 +1,5 @@
 import {describe,expect,it} from 'vitest';
-import {hasValidBearer,parsePublishRequest,safeTarget} from '../../functions/_shared/social-publish';
+import {hasValidBearer,parsePublishRequest,safeTarget,webhookAuthHeaders} from '../../functions/_shared/social-publish';
 
 const secret='test-secret-that-is-at-least-32-characters';
 
@@ -14,6 +14,12 @@ describe('SNS publish contract',()=>{
     expect(await hasValidBearer(new Request('https://example.com',{headers:{authorization:`Bearer ${secret}`}}),secret)).toBe(true);
     expect(await hasValidBearer(new Request('https://example.com',{headers:{authorization:'Bearer wrong-token'}}),secret)).toBe(false);
     expect(await hasValidBearer(new Request('https://example.com'),secret)).toBe(false);
+  });
+
+  it('uses x-make-apikey only for Make Custom Webhooks',()=>{
+    expect(webhookAuthHeaders('https://hook.make.com/example',secret)).toEqual({'x-make-apikey':secret});
+    expect(webhookAuthHeaders('https://hook.eu2.make.com/example',secret)).toEqual({'x-make-apikey':secret});
+    expect(webhookAuthHeaders('https://publisher.example/hooks/social',secret)).toEqual({authorization:`Bearer ${secret}`});
   });
 
   it('normalizes a valid publish request',async()=>{
