@@ -2,6 +2,7 @@ import {useQuery} from '@tanstack/react-query';
 import {ExternalLink,Loader2,Newspaper,Sparkles} from 'lucide-react';
 import {useState} from 'react';
 import {Link} from 'react-router-dom';
+import {adminFetch as fetch} from '../lib/adminApi';
 
 export type NewsItem={id:string;title:string;source:string;source_url:string;published_at:string;category:string;importance:number;analysis_status:string;video_status:string;assets:string[];article_count:number;provider_key:string;analysisAllowed:boolean;videoAllowed:boolean;analysis_id?:string;sentiment?:string;analysis_summary?:string;analysis_generated_at?:string};
 type SourceStatus={provider_key:string;display_name:string;enabled:number;connection_status:string};

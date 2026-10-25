@@ -49,5 +49,13 @@ export async function hasValidBearer(request:Request,secret?:string){
   return mismatch===0;
 }
 
+export async function hasValidSecret(supplied:string|undefined|null,secret?:string){
+  if(!secret||secret.length<32||!supplied)return false;
+  const [actual,expected]=await Promise.all([digest(supplied),digest(secret)]);
+  let mismatch=actual.length^expected.length;
+  for(let index=0;index<Math.max(actual.length,expected.length);index++)mismatch|=(actual[index]||0)^(expected[index]||0);
+  return mismatch===0;
+}
+
 async function digest(value:string){return new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(value)))}
 export function json(body:unknown,status=200,extraHeaders:Record<string,string>={}){return new Response(JSON.stringify(body),{status,headers:{'content-type':'application/json','Cache-Control':'no-store','X-Content-Type-Options':'nosniff',...extraHeaders}})}

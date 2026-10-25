@@ -23,7 +23,7 @@ npx wrangler pages dev dist --compatibility-date=2026-10-01
 
 현재 Pages 프로젝트처럼 Build command가 비어 있어도 첫 배포가 가능하도록 검증된 `dist` 산출물을 저장소에 포함합니다. 권장 운영 설정은 Pages의 **Settings → Build → Build configurations**에서 Build command를 `npm run build`로 지정하는 것입니다. 설정 후에는 Cloudflare가 매 배포마다 소스에서 새 산출물을 생성합니다.
 
-현재 초기 배포가 가짜 UUID 때문에 실패하지 않도록 D1 바인딩은 `wrangler.jsonc`에서 제외되어 있습니다. 데이터베이스를 생성한 뒤 Cloudflare Pages의 **Settings → Bindings → D1 database bindings**에서 변수 이름 `DB`로 `5waveflow` 데이터베이스를 연결하세요. 또는 `wrangler.jsonc`에 `d1_databases` 항목을 추가할 때 `wrangler d1 create`가 반환한 실제 UUID만 사용해야 합니다.
+`wrangler.jsonc`에는 전용 D1 `5waveflow`를 `DB`, 비공개 R2 `5waveflow-media`를 `SNS_MEDIA_BUCKET`으로 연결한 실제 바인딩이 포함되어 있습니다. 신규 환경에서는 동일한 이름의 리소스를 준비하거나 해당 환경의 실제 ID로 설정을 교체하세요.
 
 ```bash
 npx wrangler d1 create 5waveflow
@@ -35,7 +35,7 @@ D1 연결 전에도 공개 시장 데이터 페이지와 Functions는 배포되�
 
 ## Admin security
 
-Cloudflare Zero Trust에서 `/admin*`, `/api/admin*`을 보호하는 Access Application을 만들고 Pages 환경변수 `CF_ACCESS_TEAM_DOMAIN`, `CF_ACCESS_AUD`를 설정해야 합니다. 설정 전 관리자 API는 503으로 닫힙니다. 관리자 API는 Access JWKS의 RS256 서명, issuer, audience, 만료 시각을 서버에서 검증합니다.
+Cloudflare Zero Trust에서 `/admin*`, `/api/admin*`을 보호하는 Access Application을 만들고 Pages 환경변수 `CF_ACCESS_TEAM_DOMAIN`, `CF_ACCESS_AUD`를 설정하는 것이 권장 방식입니다. 관리자 API는 Access JWKS의 RS256 서명, issuer, audience, 만료 시각을 서버에서 검증합니다. Access 설정 전에는 `ADMIN_API_TOKEN`을 사용하며, 별도 값이 없으면 기존 `SNS_PUBLISH_WEBHOOK_TOKEN`으로 관리자 화면에서 세션 인증할 수 있습니다. 토큰은 브라우저 `sessionStorage`에만 보관됩니다.
 
 ### SNS 원클릭 업로드
 

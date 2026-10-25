@@ -1,20 +1,15 @@
-import {forwardPublish,json,parsePublishRequest,PublishPayload,SocialPublishEnv} from '../../_shared/social-publish';
+import {forwardPublish,hasValidSecret,json,parsePublishRequest,PublishPayload,SocialPublishEnv} from '../../_shared/social-publish';
 import {createSignedMediaUrl,MAX_MP4_BYTES,MediaEnv,validateMp4} from '../../_shared/media';
 import {analyzeNews,approveVideoProject,automationSettings,collectNews,createVideoProject,newsSourceSettings,registerManualNews,WorkflowEnv} from '../../_shared/workflows';
 
-interface Env extends SocialPublishEnv,MediaEnv,WorkflowEnv { CF_ACCESS_TEAM_DOMAIN?:string; CF_ACCESS_AUD?:string }
+interface Env extends SocialPublishEnv,MediaEnv,WorkflowEnv { CF_ACCESS_TEAM_DOMAIN?:string; CF_ACCESS_AUD?:string; ADMIN_API_TOKEN?:string }
 type Claims={aud?:string[]|string;exp?:number;iss?:string};
 type Jwk={kid?:string;kty:string;n?:string;e?:string;alg?:string;use?:string};
 
 export const onRequest:PagesFunction<Env>=async({request,env})=>{
-  if(!env.CF_ACCESS_TEAM_DOMAIN||!env.CF_ACCESS_AUD) return json({error:'Admin access is not configured'},503);
-  const jwt=request.headers.get('Cf-Access-Jwt-Assertion');
-  if(!jwt) return json({error:'Unauthorized'},401);
-  let claims:Claims;
-  try {
-    const teamDomain=normalizeDomain(env.CF_ACCESS_TEAM_DOMAIN);
-    claims=await verifyAccessJwt(jwt,teamDomain,env.CF_ACCESS_AUD);
-  } catch{return json({error:'Unauthorized'},401)}
+  let claims:Claims={exp:Math.floor(Date.now()/1000)+3600};
+  if(env.CF_ACCESS_TEAM_DOMAIN&&env.CF_ACCESS_AUD){const jwt=request.headers.get('Cf-Access-Jwt-Assertion');if(!jwt)return json({error:'Unauthorized'},401);try{claims=await verifyAccessJwt(jwt,normalizeDomain(env.CF_ACCESS_TEAM_DOMAIN),env.CF_ACCESS_AUD)}catch{return json({error:'Unauthorized'},401)}}
+  else if(!await hasValidSecret(request.headers.get('x-admin-token'),env.ADMIN_API_TOKEN||env.SNS_PUBLISH_WEBHOOK_TOKEN))return json({error:'관리자 인증이 필요합니다.',code:'ADMIN_AUTH_REQUIRED'},401);
   const path=new URL(request.url).pathname.replace(/^\/api\/admin\/?/,'');
   try{
     if(path==='publish'&&request.method==='POST') return await publish(request,env,claims);

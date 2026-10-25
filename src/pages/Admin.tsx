@@ -4,6 +4,7 @@ import {Link,useLocation} from 'react-router-dom';
 import VideoStudio from '../components/VideoStudio';
 import News from './News';
 import NewsSourceManager from '../components/NewsSourceManager';
+import {adminFetch as fetch,getAdminToken} from '../lib/adminApi';
 
 const platforms=['instagram','youtube','tiktok','x','threads'] as const;
 type Platform=typeof platforms[number];
@@ -30,7 +31,7 @@ function PublishPanel(){
     if(!file)return;
     setError('');setUploading(true);setUploadProgress(0);
     const data=new FormData();data.append('file',file);
-    const xhr=new XMLHttpRequest();xhr.open('POST','/api/admin/media');xhr.responseType='json';
+    const xhr=new XMLHttpRequest();xhr.open('POST','/api/admin/media');xhr.responseType='json';const adminToken=getAdminToken();if(adminToken)xhr.setRequestHeader('x-admin-token',adminToken);
     xhr.upload.onprogress=event=>{if(event.lengthComputable)setUploadProgress(Math.round(event.loaded/event.total*100))};
     xhr.onload=()=>{const body=xhr.response as Partial<UploadResult>&{error?:string};if(xhr.status>=200&&xhr.status<300&&body.mediaUrl){setMediaUrl(body.mediaUrl);setUploadProgress(100)}else setError(body?.error||'영상 업로드에 실패했습니다.');setUploading(false)};
     xhr.onerror=()=>{setError('영상 업로드 중 네트워크 오류가 발생했습니다.');setUploading(false)};

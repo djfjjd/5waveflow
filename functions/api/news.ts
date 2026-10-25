@@ -2,7 +2,7 @@ import {json} from '../_shared/social-publish';
 
 interface Env { DB?:D1Database }
 export const onRequestGet:PagesFunction<Env>=async({request,env})=>{
-  if(!env.DB)return json({error:'News database is not configured'},503);
+  if(!env.DB)return json({items:[],sources:[],setupRequired:true,message:'뉴스 데이터베이스 연결을 준비하고 있습니다.'});
   const url=new URL(request.url),limit=Math.min(100,Math.max(1,Number(url.searchParams.get('limit')||50)));
   const category=url.searchParams.get('category'),provider=url.searchParams.get('provider'),sort=url.searchParams.get('sort')==='importance'?'importance':'latest',where:string[]=[],bindings:(string|number)[]=[];
   if(category&&['crypto','kr_market','us_market','macro','company','international'].includes(category)){where.push('n.category = ?');bindings.push(category)}
