@@ -18,6 +18,19 @@ export async function collectFromGdelt(fetcher:typeof fetch=fetch){
   });
 }
 
+export async function collectFromFederalReserve(fetcher:typeof fetch=fetch){
+  const response=await fetcher('https://www.federalreserve.gov/feeds/press_all.xml',{headers:{accept:'application/rss+xml, application/xml;q=0.9','user-agent':'5waveflow-news-collector/1.0'},signal:AbortSignal.timeout(10000)});
+  if(!response.ok)throw new Error(`Federal Reserve RSS ${response.status}`);
+  const xml=await response.text(),items=xml.match(/<item>[\s\S]*?<\/item>/gi)||[];
+  return items.slice(0,50).flatMap(item=>{
+    const title=xmlValue(item,'title'),link=xmlValue(item,'link'),date=xmlValue(item,'pubDate'),published=Date.parse(date);
+    if(!title||!link||!Number.isFinite(published)||published>Date.now()+300000||published<Date.now()-45*86400_000)return [];
+    let sourceUrl:URL;try{sourceUrl=new URL(link)}catch{return []}
+    if(sourceUrl.protocol!=='https:'||sourceUrl.hostname!=='www.federalreserve.gov')return [];
+    return [{title:title.slice(0,500),source:'Federal Reserve Board',url:sourceUrl.toString(),publishedAt:new Date(published).toISOString(),category:'macro',countries:['US'],assets:['SPX','NASDAQ','USD/KRW'],importance:importance(title),providerKey:'gdelt',ingestionMethod:'api'} satisfies CollectedArticle];
+  });
+}
+
 export async function storeArticles(db:D1Database,articles:CollectedArticle[]){
   let inserted=0,duplicates=0;
   for(const article of articles){
@@ -49,3 +62,5 @@ export function isPublicationTimeValid(value:string,now=Date.now()){const time=D
 export function canonicalUrl(value:string){const url=new URL(value);url.hash='';for(const key of [...url.searchParams.keys()])if(/^utm_|^(fbclid|gclid)$/i.test(key))url.searchParams.delete(key);return url.toString()}
 async function eventFingerprint(title:string){return sha256(title.toLowerCase().replace(/[^a-z0-9가-힣 ]/g,' ').split(/\s+/).filter(word=>word.length>2).sort().slice(0,12).join(' '))}
 async function sha256(value:string){const bytes=new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(value)));return [...bytes].map(byte=>byte.toString(16).padStart(2,'0')).join('')}
+function xmlValue(item:string,tag:string){const match=item.match(new RegExp(`<${tag}[^>]*>([\\s\\S]*?)<\\/${tag}>`,'i'));return match?decodeXml(match[1].replace(/^<!\[CDATA\[|\]\]>$/g,'').trim()):''}
+function decodeXml(value:string){return value.replace(/&#(x?[0-9a-f]+);/gi,(_,code)=>String.fromCodePoint(parseInt(code.replace(/^x/i,''),/^x/i.test(code)?16:10))).replace(/&quot;/g,'"').replace(/&apos;|&#39;/g,"'").replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>')}

@@ -1,5 +1,5 @@
 import {describe,expect,it} from 'vitest';
-import {canonicalUrl,isPublicationTimeValid,parseGdeltDate,validateAnalysis} from '../../functions/_shared/news';
+import {canonicalUrl,collectFromFederalReserve,isPublicationTimeValid,parseGdeltDate,validateAnalysis} from '../../functions/_shared/news';
 import {buildVideoScript} from '../../functions/_shared/workflows';
 
 describe('news workflow safety',()=>{
@@ -8,4 +8,5 @@ describe('news workflow safety',()=>{
   it('rejects future news to prevent time leakage',()=>{const now=Date.parse('2026-10-25T12:00:00Z');expect(isPublicationTimeValid('2026-10-25T11:59:00Z',now)).toBe(true);expect(isPublicationTimeValid('2026-10-26T12:00:00Z',now)).toBe(false)});
   it('rejects incomplete AI output instead of filling invented values',()=>expect(validateAnalysis({summary:'only a summary'})).toBeNull());
   it('creates a fact-check-required script with attribution',()=>{const script=buildVideoScript({news_title:'Fed decision',summary:'Summary',importance_reason:'Reason',short_term_scenario:'Short',counter_scenario:'Counter',source_url:'https://example.com/source'});expect(script.status).toBe('draft_requires_fact_check');expect(script.sourceUrl).toBe('https://example.com/source');expect(script.sections).toHaveLength(4)});
+  it('parses verified Federal Reserve RSS without storing article bodies',async()=>{const rss='<rss><channel><item><title><![CDATA[FOMC rate decision &amp; outlook]]></title><link><![CDATA[https://www.federalreserve.gov/newsevents/pressreleases/monetary-test.htm]]></link><description>full body must not be stored</description><pubDate><![CDATA[Sun, 25 Oct 2026 08:00:00 GMT]]></pubDate></item></channel></rss>';const fetcher=async()=>new Response(rss,{status:200,headers:{'content-type':'application/rss+xml'}});const articles=await collectFromFederalReserve(fetcher as typeof fetch);expect(articles).toHaveLength(1);expect(articles[0]).toMatchObject({source:'Federal Reserve Board',title:'FOMC rate decision & outlook',category:'macro'});expect(JSON.stringify(articles[0])).not.toContain('full body')});
 });
