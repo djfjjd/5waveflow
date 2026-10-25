@@ -43,12 +43,44 @@ Cloudflare Zero Trust에서 `/admin*`, `/api/admin*`을 보호하는 Access Appl
 
 두 엔드포인트는 동일한 검증·전달 코드를 사용하므로 서로를 호출하지 않습니다. `SNS_PUBLISH_WEBHOOK_URL`이 현재 Pages origin 또는 `/api/admin/publish`, `/api/sns/webhook` 경로를 가리키면 반복 호출 방지를 위해 요청을 거부합니다.
 
-Cloudflare Pages 프로젝트에 아래 두 값을 **Encrypt**로 추가하세요.
+Cloudflare Pages 프로젝트에 아래 값을 추가하되 Secret 값은 **Encrypt**로 저장하세요.
 
 - `SNS_PUBLISH_WEBHOOK_URL`: Make, n8n 또는 실제 SNS 게시 처리기의 외부 HTTPS 엔드포인트. 현재 Pages 프로젝트 주소는 사용할 수 없습니다.
 - `SNS_PUBLISH_WEBHOOK_TOKEN`: 최소 32자의 임의 문자열. `/api/sns/webhook` 수신 Bearer 인증에 사용하며, Make Custom Webhook 전송 시에는 `x-make-apikey` 헤더로 전달합니다. Make 이외의 Webhook에는 Bearer 인증을 유지합니다.
+- `SNS_MEDIA_SIGNING_SECRET`: R2 영상 다운로드 URL 서명용으로, 게시 토큰과 다른 최소 32자의 임의 문자열
+- `SNS_MEDIA_URL_TTL_SECONDS`: 선택값. 기본 86400초(24시간), 허용 범위 3600~604800초
 
 Webhook은 `jobId`, `platforms`, `mediaUrl`, `title`, `caption`, `requestedAt` JSON을 받고 성공 시 HTTP 2xx를 반환해야 합니다. 실제 게시를 위해 Webhook 측에 Meta(Instagram·Threads), Google(YouTube), TikTok, X 계정 OAuth 토큰과 각 플랫폼 게시 권한을 연결합니다. 플랫폼 토큰은 프런트엔드나 이 저장소에 넣지 마세요.
+
+Cloudflare Pages의 **Settings → Bindings**에는 비공개 R2 버킷을 `SNS_MEDIA_BUCKET`, 기존 D1 데이터베이스를 `DB`라는 변수명으로 연결하고 `migrations/0003_sns_publish.sql`을 적용해야 합니다. R2의 Public Development URL과 커스텀 공개 도메인은 켜지 않습니다. 관리자는 `POST /api/admin/media`로 최대 90MB MP4를 업로드하며, 외부 서비스는 서명과 만료 시각이 포함된 `GET /api/media/<key>` URL로만 영상을 읽습니다. Range 요청을 지원하므로 SNS가 영상을 가져갈 수 있습니다.
+
+### Make Router 계약
+
+Pages가 Make Custom Webhook으로 보내는 필드는 다음과 같습니다.
+
+- `jobId`: 모든 경로와 콜백에서 유지할 고유 작업 ID
+- `platforms`: `instagram`, `youtube`, `tiktok`, `threads`, `x` 중 선택된 값의 배열
+- `mediaUrl`: 제한 시간 서명 영상 URL 또는 관리자가 입력한 외부 HTTPS URL
+- `title`: 100자 이하 제목
+- `caption`: 2,200자 이하 본문
+- `requestedAt`: ISO 8601 요청 시각
+
+Router는 플랫폼마다 `platforms[]`에 해당 값이 포함된 경우만 통과시킵니다. YouTube는 `title`, `caption`, `mediaUrl`을, Instagram Reels·TikTok·Threads·X는 `caption`, `mediaUrl`을 게시 모듈에 연결합니다. 각 경로는 플랫폼 API가 반환한 실제 게시물 ID 또는 URL을 확인한 뒤에만 아래 상태 콜백을 호출해야 합니다. API 호출 접수만으로 `succeeded`를 보내면 안 됩니다.
+
+```json
+{
+  "event": "publish.status",
+  "jobId": "원본 jobId",
+  "platform": "youtube",
+  "status": "succeeded",
+  "remotePostId": "플랫폼 게시물 ID",
+  "postUrl": "https://..."
+}
+```
+
+콜백 주소는 `POST https://<배포도메인>/api/sns/webhook`이며 `Authorization: Bearer <SNS_PUBLISH_WEBHOOK_TOKEN>`을 사용합니다. 처리 중에는 `processing`, 실패 시에는 `failed`와 `error`를 보냅니다. 성공 콜백은 `remotePostId` 또는 HTTPS `postUrl`이 없으면 거부됩니다. Make의 최초 수신 Webhook 인증은 Pages가 보내는 `x-make-apikey`이고, Pages 상태 콜백 인증은 Bearer이므로 두 헤더의 방향을 혼동하지 않아야 합니다.
+
+D1은 작업별 `idempotency_key`를 UNIQUE로 저장해 관리자 재전송을 중복 실행하지 않으며, 플랫폼별 `pending → processing → succeeded|failed`, 시도 횟수, 원격 게시물 ID/URL, 실패 사유를 기록합니다. 실패 재시도는 Make의 Error Handler가 같은 `jobId`로 해당 플랫폼 경로만 다시 실행하고 `processing`/최종 상태를 콜백하는 방식으로 구성합니다.
 
 ## Current scope
 

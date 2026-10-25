@@ -1,43 +1,61 @@
-import {FormEvent,useState} from 'react';
-import {Activity,CheckCircle2,Database,Film,Link2,Loader2,LockKeyhole,RadioTower,Send,Settings2,Share2} from 'lucide-react';
+import {FormEvent,useEffect,useState} from 'react';
+import {Activity,CheckCircle2,Database,Film,Link2,Loader2,LockKeyhole,RadioTower,Send,Settings2,Share2,Upload} from 'lucide-react';
 import {Link,useLocation} from 'react-router-dom';
 
 const platforms=['instagram','youtube','tiktok','x','threads'] as const;
 type Platform=typeof platforms[number];
 type PublishResult={ok:boolean;jobId:string;message:string;platforms:Platform[]};
+type UploadResult={ok:boolean;mediaUrl:string;size:number;expiresIn:number};
 const platformLabels:Record<Platform,string>={instagram:'Instagram',youtube:'YouTube',tiktok:'TikTok',x:'X',threads:'Threads'};
 
 function PublishPanel(){
   const [selected,setSelected]=useState<Platform[]>(['instagram','youtube','tiktok','x','threads']);
   const [mediaUrl,setMediaUrl]=useState('');
+  const [file,setFile]=useState<File|null>(null);
+  const [previewUrl,setPreviewUrl]=useState('');
+  const [uploadProgress,setUploadProgress]=useState<number|null>(null);
+  const [uploading,setUploading]=useState(false);
   const [title,setTitle]=useState('');
   const [caption,setCaption]=useState('');
   const [submitting,setSubmitting]=useState(false);
   const [result,setResult]=useState<PublishResult|null>(null);
   const [error,setError]=useState('');
+  const [idempotencyKey,setIdempotencyKey]=useState(()=>crypto.randomUUID());
+  useEffect(()=>{if(!file){setPreviewUrl('');return}const url=URL.createObjectURL(file);setPreviewUrl(url);return()=>URL.revokeObjectURL(url)},[file]);
   const toggle=(platform:Platform)=>setSelected(current=>current.includes(platform)?current.filter(item=>item!==platform):[...current,platform]);
+  const upload=()=>{
+    if(!file)return;
+    setError('');setUploading(true);setUploadProgress(0);
+    const data=new FormData();data.append('file',file);
+    const xhr=new XMLHttpRequest();xhr.open('POST','/api/admin/media');xhr.responseType='json';
+    xhr.upload.onprogress=event=>{if(event.lengthComputable)setUploadProgress(Math.round(event.loaded/event.total*100))};
+    xhr.onload=()=>{const body=xhr.response as Partial<UploadResult>&{error?:string};if(xhr.status>=200&&xhr.status<300&&body.mediaUrl){setMediaUrl(body.mediaUrl);setUploadProgress(100)}else setError(body?.error||'영상 업로드에 실패했습니다.');setUploading(false)};
+    xhr.onerror=()=>{setError('영상 업로드 중 네트워크 오류가 발생했습니다.');setUploading(false)};
+    xhr.send(data);
+  };
   const submit=async(event:FormEvent)=>{
     event.preventDefault();setError('');setResult(null);
     if(!selected.length){setError('게시할 플랫폼을 하나 이상 선택해 주세요.');return}
     setSubmitting(true);
     try{
-      const response=await fetch('/api/admin/publish',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({platforms:selected,mediaUrl,title,caption})});
+      const response=await fetch('/api/admin/publish',{method:'POST',headers:{'content-type':'application/json','x-idempotency-key':idempotencyKey},body:JSON.stringify({platforms:selected,mediaUrl,title,caption})});
       const body=await response.json().catch(()=>({})) as Partial<PublishResult>&{error?:string};
       if(!response.ok)throw new Error(body.error||'게시 요청에 실패했습니다.');
-      setResult(body as PublishResult);
+      setResult(body as PublishResult);setIdempotencyKey(crypto.randomUUID());
     }catch(reason){setError(reason instanceof Error?reason.message:'게시 요청에 실패했습니다.')}finally{setSubmitting(false)}
   };
   return <div className="card p-6">
     <div className="flex items-center gap-2"><Share2 size={18} className="text-primary"/><h2 className="font-semibold">SNS 원클릭 업로드</h2></div>
-    <p className="mt-3 text-sm leading-6 text-neutral">공개 미디어 URL과 문구를 입력하면 선택한 채널로 한 번에 발행 요청을 보냅니다.</p>
+    <p className="mt-3 text-sm leading-6 text-neutral">MP4를 비공개 저장소에 업로드하거나 외부 미디어 URL을 입력한 뒤 선택한 채널로 발행 요청을 보냅니다.</p>
     <form className="mt-6 space-y-5" onSubmit={submit}>
       <fieldset><legend className="mb-2 text-sm font-medium">게시 채널</legend><div className="flex flex-wrap gap-2">{platforms.map(platform=><button className={`focus-ring rounded-full border px-3 py-2 text-sm transition ${selected.includes(platform)?'border-primary bg-primary/10 text-primary':'border-[#354151] text-neutral'}`} type="button" aria-pressed={selected.includes(platform)} onClick={()=>toggle(platform)} key={platform}>{selected.includes(platform)&&<CheckCircle2 className="mr-1.5 inline" size={15}/>} {platformLabels[platform]}</button>)}</div></fieldset>
-      <label className="block"><span className="mb-2 block text-sm font-medium">미디어 URL</span><div className="relative"><Link2 className="absolute left-3 top-3 text-neutral" size={17}/><input className="focus-ring w-full rounded-lg border border-[#354151] bg-background px-10 py-2.5 text-sm" required type="url" placeholder="https://cdn.example.com/video.mp4" value={mediaUrl} onChange={event=>setMediaUrl(event.target.value)}/></div><span className="mt-1.5 block text-xs text-neutral">각 SNS 서버가 접근할 수 있는 HTTPS 이미지 또는 영상 주소가 필요합니다.</span></label>
+      <div><label className="mb-2 block text-sm font-medium" htmlFor="sns-video">MP4 파일 업로드</label><div className="flex flex-col gap-3 sm:flex-row"><input id="sns-video" className="focus-ring min-w-0 flex-1 rounded-lg border border-[#354151] bg-background p-2 text-sm" type="file" accept="video/mp4,.mp4" onChange={event=>setFile(event.target.files?.[0]||null)}/><button className="focus-ring flex items-center justify-center gap-2 rounded-lg border border-primary px-4 py-2 text-sm text-primary disabled:opacity-50" type="button" disabled={!file||uploading} onClick={upload}>{uploading?<Loader2 className="animate-spin" size={17}/>:<Upload size={17}/>} R2에 업로드</button></div>{uploadProgress!==null&&<div className="mt-3"><div className="h-2 overflow-hidden rounded-full bg-[#26303d]"><div className="h-full bg-primary transition-all" style={{width:`${uploadProgress}%`}}/></div><div className="mt-1 text-right text-xs text-neutral">{uploadProgress}%</div></div>}{previewUrl&&<video className="mt-3 max-h-72 w-full rounded-lg bg-black" controls preload="metadata" src={previewUrl}/>}<span className="mt-1.5 block text-xs text-neutral">video/mp4 형식, 최대 90MB. 업로드 후 아래 서명 URL이 자동 입력됩니다.</span></div>
+      <label className="block"><span className="mb-2 block text-sm font-medium">미디어 URL</span><div className="relative"><Link2 className="absolute left-3 top-3 text-neutral" size={17}/><input className="focus-ring w-full rounded-lg border border-[#354151] bg-background px-10 py-2.5 text-sm" required type="url" placeholder="https://cdn.example.com/video.mp4" value={mediaUrl} onChange={event=>setMediaUrl(event.target.value)}/></div><span className="mt-1.5 block text-xs text-neutral">R2 업로드 대신 외부 HTTPS 영상 주소를 직접 입력할 수도 있습니다.</span></label>
       <label className="block"><span className="mb-2 block text-sm font-medium">제목</span><input className="focus-ring w-full rounded-lg border border-[#354151] bg-background px-3 py-2.5 text-sm" required maxLength={100} placeholder="게시물 제목" value={title} onChange={event=>setTitle(event.target.value)}/></label>
       <label className="block"><span className="mb-2 block text-sm font-medium">본문</span><textarea className="focus-ring min-h-32 w-full resize-y rounded-lg border border-[#354151] bg-background px-3 py-2.5 text-sm" required maxLength={2200} placeholder="게시 문구와 해시태그를 입력하세요." value={caption} onChange={event=>setCaption(event.target.value)}/></label>
       {error&&<div role="alert" className="rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-400">{error}</div>}
       {result&&<div role="status" className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm text-emerald-400">{result.message} 작업 ID: {result.jobId}</div>}
-      <button className="focus-ring flex items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50" disabled={submitting} type="submit">{submitting?<Loader2 className="animate-spin" size={17}/>:<Send size={17}/>} {submitting?'업로드 요청 중…':`${selected.length}개 채널에 업로드`}</button>
+      <button className="focus-ring flex items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50" disabled={submitting||uploading} type="submit">{submitting?<Loader2 className="animate-spin" size={17}/>:<Send size={17}/>} {submitting?'게시 요청 중…':`${selected.length}개 채널에 게시 요청`}</button>
     </form>
   </div>;
 }
