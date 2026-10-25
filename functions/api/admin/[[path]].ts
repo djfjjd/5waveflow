@@ -1,7 +1,8 @@
 import {forwardPublish,json,parsePublishRequest,PublishPayload,SocialPublishEnv} from '../../_shared/social-publish';
 import {createSignedMediaUrl,MAX_MP4_BYTES,MediaEnv,validateMp4} from '../../_shared/media';
+import {analyzeNews,approveVideoProject,automationSettings,collectNews,createVideoProject,WorkflowEnv} from '../../_shared/workflows';
 
-interface Env extends SocialPublishEnv,MediaEnv { CF_ACCESS_TEAM_DOMAIN?:string; CF_ACCESS_AUD?:string; DB?:D1Database }
+interface Env extends SocialPublishEnv,MediaEnv,WorkflowEnv { CF_ACCESS_TEAM_DOMAIN?:string; CF_ACCESS_AUD?:string }
 type Claims={aud?:string[]|string;exp?:number;iss?:string};
 type Jwk={kid?:string;kty:string;n?:string;e?:string;alg?:string;use?:string};
 
@@ -18,7 +19,12 @@ export const onRequest:PagesFunction<Env>=async({request,env})=>{
   try{
     if(path==='publish'&&request.method==='POST') return await publish(request,env,claims);
     if(path==='media'&&request.method==='POST') return await uploadMedia(request,env);
-    if(path==='publish'||path==='media') return json({error:'Method not allowed'},405,{Allow:'POST'});
+    if(path==='news/collect'&&request.method==='POST')return await collectNews(env);
+    if(path==='news/analyze'&&request.method==='POST')return await analyzeNews(request,env);
+    if(path==='video-projects'&&request.method==='POST')return await createVideoProject(request,env);
+    if(path==='video-projects/approve'&&request.method==='POST')return await approveVideoProject(request,env);
+    if(path==='automation/settings'&&(request.method==='GET'||request.method==='PUT'))return await automationSettings(request,env);
+    if(['publish','media','news/collect','news/analyze','video-projects','video-projects/approve','automation/settings'].includes(path)) return json({error:'Method not allowed'},405,{Allow:'GET, POST, PUT'});
     return json({ok:true,message:'Admin API foundation',databaseBound:Boolean(env.DB),identityVerified:true,expiresAt:claims.exp});
   }catch{return json({error:'관리자 요청을 처리하지 못했습니다.'},500)}
 };

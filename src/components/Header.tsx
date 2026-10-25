@@ -23,7 +23,7 @@ export default function Header(){
   const[theme,setTheme]=useState<ThemeMode>(storedTheme==='dark'||storedTheme==='light'||storedTheme==='system'?storedTheme:'system');
   const[themeMenuOpen,setThemeMenuOpen]=useState(false);
   const themeMenuRef=useRef<HTMLDivElement>(null);
-  const nav=[['/',t('markets')],['/analysis/BTCUSDT',t('analysis')],['/wallpaper',t('wallpaper')],['/technical-analysis',t('technicalNav')],['/performance',t('performance')]];
+  const nav=[['/',t('markets')],['/analysis/BTCUSDT',t('analysis')],['/news','뉴스'],['/wallpaper',t('wallpaper')],['/technical-analysis',t('technicalNav')],['/performance',t('performance')]];
 
   useEffect(()=>{
     const media=window.matchMedia('(prefers-color-scheme: dark)');

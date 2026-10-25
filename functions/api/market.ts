@@ -14,7 +14,7 @@ export const onRequestGet:PagesFunction<Env>=async({request,env})=>{
   const symbol=(url.searchParams.get('symbol')||'BTCUSDT').toUpperCase();
   const interval=url.searchParams.get('interval')||'1h';
   const market=url.searchParams.get('market');
-  const stockSymbol=/^(KRX|NASDAQ|NYSE):[A-Z0-9.\-]+$/.test(symbol);
+  const stockSymbol=/^(KRX|NASDAQ|NYSE):[A-Z0-9.-]+$/.test(symbol);
   if((!allowedSymbols.has(symbol)&&!stockSymbol)||!allowedIntervals.has(interval))return json({error:'Unsupported symbol or interval'},400);
   try{
     let data:ProviderData;

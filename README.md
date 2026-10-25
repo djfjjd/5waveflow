@@ -84,6 +84,8 @@ D1은 작업별 `idempotency_key`를 UNIQUE로 저장해 관리자 재전송을 
 
 ## Current scope
 
+뉴스·AI·영상 자동화의 구현 범위, 외부 승인 항목과 운영 비용 가이드는 [`docs/NEWS_AUTOMATION.md`](docs/NEWS_AUTOMATION.md)를 참조하세요. `/news`는 실제 수집 뉴스, `/news/analysis`는 완료된 AI 분석만 표시하며 `/admin/video-studio`는 관리자 승인 전 초안만 생성합니다.
+
 - Binance 공개 시장 데이터 API 기반 BTC/ETH 24시간 시세 및 최근 500개 OHLCV, Cloudflare 환경에서 Binance가 차단될 경우 Upbit KRW OHLCV 자동 폴백
 - 실제 캔들 기반 RSI(14), MACD(12,26,9), EMA(20·50·200), Bollinger(20,2), ATR(14), 거래량 MA(20)
 - ATR 적응형 ZigZag와 Elliott 1~5/ABC 규칙 검증, 가격·거래량 기반 Wyckoff 이벤트 및 Phase 후보 분석

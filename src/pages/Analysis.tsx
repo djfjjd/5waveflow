@@ -14,7 +14,7 @@ const analysisSymbols=[{label:'비트코인',symbol:'BTCUSDT'},{label:'이더리
 export default function Analysis(){
   const{symbol='BTCUSDT'}=useParams();
   const navigate=useNavigate();
-  const hasQuantData=cryptoSymbols.has(symbol)||/^(KRX|NASDAQ|NYSE):[A-Z0-9.\-]+$/.test(symbol);
+  const hasQuantData=cryptoSymbols.has(symbol)||/^(KRX|NASDAQ|NYSE):[A-Z0-9.-]+$/.test(symbol);
   const[interval,setInterval]=useState('1h');
   const[symbolSearch,setSymbolSearch]=useState(symbol);
   useEffect(()=>setSymbolSearch(symbol),[symbol]);
@@ -37,7 +37,7 @@ export default function Analysis(){
   </main>;
 
   function submitSymbol(event:FormEvent){event.preventDefault();goToSymbol(symbolSearch)}
-  function goToSymbol(raw:string){const input=raw.trim().toUpperCase().replace(/\s+/g,'');if(!input)return;const compact=input.replace('/','');const asset=compact.replace(/(USDT|KRW)$/,'');let target:string;if(['BTC','ETH','SOL','XRP'].includes(asset))target=`${asset}USDT`;else if(/^\d{6}$/.test(input))target=`KRX:${input}`;else if(input.includes(':'))target=input;else if(/^[A-Z.\-]+$/.test(input))target=`NASDAQ:${input}`;else return;setSymbolSearch(target);navigate(`/analysis/${encodeURIComponent(target)}`)}
+  function goToSymbol(raw:string){const input=raw.trim().toUpperCase().replace(/\s+/g,'');if(!input)return;const compact=input.replace('/','');const asset=compact.replace(/(USDT|KRW)$/,'');let target:string;if(['BTC','ETH','SOL','XRP'].includes(asset))target=`${asset}USDT`;else if(/^\d{6}$/.test(input))target=`KRX:${input}`;else if(input.includes(':'))target=input;else if(/^[A-Z.-]+$/.test(input))target=`NASDAQ:${input}`;else return;setSymbolSearch(target);navigate(`/analysis/${encodeURIComponent(target)}`)}
 }
 
 function ElliottDetails({market,multiFrame,unavailable}:{market:MarketPayload|undefined;multiFrame:MultiFrame;unavailable:boolean}){const elliott=market?.analysis.elliott,primary=elliott?.scenarios[0];return <div className="card min-w-0 p-2 md:p-5"><div className="label text-[8px] md:text-xs">ELLIOTT WAVE</div><p className="mt-2 break-words text-[9px] font-medium leading-3 md:mt-3 md:text-sm md:leading-5">{unavailable?'공급자 미연결':multiFrame.summary}</p><p className="mt-1 text-[8px] leading-3 text-neutral md:hidden">{unavailable?'분석 불가':'일·4H·1H·30M·15M'}</p><div className="hidden md:block"><p className="mt-2 text-xs leading-5 text-neutral">{unavailable?'이 종목의 OHLCV 공급자가 필요합니다.':elliott?.detail??'분석 데이터를 불러오는 중입니다.'}</p>{!unavailable&&<p className="mt-3 text-xs text-primary">다중 시간대: {multiFrame.details}</p>}{primary&&<dl className="mt-3 grid grid-cols-2 gap-3 text-xs"><Stat n="현재 차트" value={primary.label}/><Stat n="상태" value={statusLabel(elliott!.status)}/><Stat n="무효화" value={primary.invalidationPrice.toLocaleString('ko-KR')}/><Stat n="되돌림" value={primary.fibonacci.retracement==null?'—':`${(primary.fibonacci.retracement*100).toFixed(1)}%`}/></dl>}</div></div>}

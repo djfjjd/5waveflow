@@ -1,0 +1,11 @@
+import {describe,expect,it} from 'vitest';
+import {canonicalUrl,isPublicationTimeValid,parseGdeltDate,validateAnalysis} from '../../functions/_shared/news';
+import {buildVideoScript} from '../../functions/_shared/workflows';
+
+describe('news workflow safety',()=>{
+  it('canonicalizes tracking URLs for duplicate detection',()=>expect(canonicalUrl('https://example.com/story?utm_source=x&id=1#top')).toBe('https://example.com/story?id=1'));
+  it('accepts only explicit UTC provider timestamps',()=>{expect(parseGdeltDate('20261025T010203Z')).toBe('2026-10-25T01:02:03.000Z');expect(parseGdeltDate('tomorrow')).toBeNull()});
+  it('rejects future news to prevent time leakage',()=>{const now=Date.parse('2026-10-25T12:00:00Z');expect(isPublicationTimeValid('2026-10-25T11:59:00Z',now)).toBe(true);expect(isPublicationTimeValid('2026-10-26T12:00:00Z',now)).toBe(false)});
+  it('rejects incomplete AI output instead of filling invented values',()=>expect(validateAnalysis({summary:'only a summary'})).toBeNull());
+  it('creates a fact-check-required script with attribution',()=>{const script=buildVideoScript({news_title:'Fed decision',summary:'Summary',importance_reason:'Reason',short_term_scenario:'Short',counter_scenario:'Counter',source_url:'https://example.com/source'});expect(script.status).toBe('draft_requires_fact_check');expect(script.sourceUrl).toBe('https://example.com/source');expect(script.sections).toHaveLength(4)});
+});
