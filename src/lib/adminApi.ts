@@ -1,1 +1,1 @@
-export function adminFetch(input:RequestInfo|URL,init:RequestInit={}){return fetch(input,init)}
+export function adminFetch(input:RequestInfo|URL,init:RequestInit={}){const headers=new Headers(init.headers);headers.set('X-Requested-With','XMLHttpRequest');return fetch(input,{...init,credentials:'same-origin',headers})}

@@ -9,7 +9,7 @@ type Jwk={kid?:string;kty:string;n?:string;e?:string;alg?:string;use?:string};
 
 export const onRequest:PagesFunction<Env>=async({request,env})=>{
   let claims:Claims={exp:Math.floor(Date.now()/1000)+3600};
-  if(env.CF_ACCESS_TEAM_DOMAIN&&env.CF_ACCESS_AUD){const jwt=request.headers.get('Cf-Access-Jwt-Assertion');if(!jwt)return json({error:'관리자 이메일 인증이 필요합니다.'},401);try{claims=await verifyAccessJwt(jwt,normalizeDomain(env.CF_ACCESS_TEAM_DOMAIN),env.CF_ACCESS_AUD)}catch{return json({error:'관리자 이메일 인증이 필요합니다.'},401)}}
+  if(env.CF_ACCESS_TEAM_DOMAIN&&env.CF_ACCESS_AUD){const jwt=request.headers.get('Cf-Access-Jwt-Assertion')||readCookie(request.headers.get('cookie'),'CF_Authorization');if(!jwt)return json({error:'관리자 이메일 인증이 필요합니다.'},401);try{claims=await verifyAccessJwt(jwt,normalizeDomain(env.CF_ACCESS_TEAM_DOMAIN),env.CF_ACCESS_AUD)}catch{return json({error:'관리자 이메일 인증이 필요합니다.'},401)}}
   else claims.email=request.headers.get('Cf-Access-Authenticated-User-Email')||undefined;
   if(!claims.email)return json({error:'관리자 이메일 인증이 필요합니다.'},401);
   if(!isAllowedAdminEmail(claims.email,env.ADMIN_ALLOWED_EMAIL))return json({error:'허용되지 않은 이메일입니다.'},403);
@@ -100,5 +100,6 @@ async function verifyAccessJwt(token:string,teamDomain:string,expectedAud:string
   return claims;
 }
 function normalizeDomain(value:string){return value.replace(/^https?:\/\//,'').replace(/\/$/,'')}
+function readCookie(header:string|null,name:string){if(!header)return '';for(const part of header.split(';')){const index=part.indexOf('=');if(index<0)continue;if(part.slice(0,index).trim()===name)return part.slice(index+1).trim()}return ''}
 function decode(value:string){return new TextDecoder().decode(bytes(value))}
 function bytes(value:string){const normalized=value.replace(/-/g,'+').replace(/_/g,'/').padEnd(Math.ceil(value.length/4)*4,'=');return Uint8Array.from(atob(normalized),c=>c.charCodeAt(0))}
