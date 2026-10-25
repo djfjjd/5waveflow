@@ -1,4 +1,4 @@
-import {collectFromGdelt,storeArticles,validateAnalysis} from './news';
+import {collectFromGdelt,NewsCategory,storeArticles,validateAnalysis} from './news';
 import {json} from './social-publish';
 import type {D1Database} from '@cloudflare/workers-types';
 
@@ -7,7 +7,28 @@ export interface WorkflowEnv {DB?:D1Database;AI_ANALYSIS_ENDPOINT?:string;AI_ANA
 
 export async function collectNews(env:WorkflowEnv){
   if(!env.DB)return json({error:'뉴스 D1 바인딩이 설정되지 않았습니다.'},503);
-  try{const articles=await collectFromGdelt();const result=await storeArticles(env.DB,articles);await usage(env.DB,'gdelt','news.collect',articles.length,0);return json({ok:true,provider:'GDELT',...result})}catch{return json({error:'실제 뉴스 공급자 연결에 실패했습니다. 가짜 기사는 저장하지 않았습니다.'},502)}
+  const runId=crypto.randomUUID();await env.DB.prepare("INSERT INTO news_collection_runs(id,provider_key,status) VALUES(?,'gdelt','running')").bind(runId).run();
+  try{const articles=await collectFromGdelt();const result=await storeArticles(env.DB,articles);await env.DB.batch([env.DB.prepare("UPDATE news_collection_runs SET status='succeeded',fetched_count=?,inserted_count=?,duplicate_count=?,completed_at=CURRENT_TIMESTAMP WHERE id=?").bind(result.fetched,result.inserted,result.duplicates,runId),env.DB.prepare("UPDATE news_source_settings SET connection_status='connected',last_attempt_at=CURRENT_TIMESTAMP,last_success_at=CURRENT_TIMESTAMP,last_error=NULL,retry_count=0 WHERE provider_key='gdelt'")]);await usage(env.DB,'gdelt','news.collect',articles.length,0);return json({ok:true,provider:'GDELT',...result})}catch{await env.DB.batch([env.DB.prepare("UPDATE news_collection_runs SET status='failed',error_message='Provider request failed',completed_at=CURRENT_TIMESTAMP WHERE id=?").bind(runId),env.DB.prepare("UPDATE news_source_settings SET connection_status='error',last_attempt_at=CURRENT_TIMESTAMP,last_error='Provider request failed',retry_count=retry_count+1 WHERE provider_key='gdelt'")]);return json({error:'실제 뉴스 공급자 연결에 실패했습니다. 가짜 기사는 저장하지 않았습니다.'},502)}
+}
+
+export async function registerManualNews(request:Request,env:WorkflowEnv){
+  if(!env.DB)return json({error:'뉴스 D1 바인딩이 설정되지 않았습니다.'},503);
+  const input=await request.json().catch(()=>null) as {provider?:unknown;title?:unknown;url?:unknown;publishedAt?:unknown;category?:unknown;importance?:unknown}|null;
+  if(!input||!['coinness','xangle'].includes(String(input.provider))||typeof input.title!=='string'||typeof input.url!=='string'||typeof input.publishedAt!=='string')return json({error:'수동 뉴스 정보를 확인해 주세요.'},400);
+  const provider=input.provider as 'coinness'|'xangle',url=safePartnerUrl(input.url,provider),published=Date.parse(input.publishedAt),category=String(input.category) as NewsCategory,importance=Math.min(5,Math.max(1,Number(input.importance||3)));
+  if(!url||!Number.isFinite(published)||published>Date.now()+300000||!['crypto','kr_market','us_market','macro','company','international'].includes(category))return json({error:'원문 도메인, 게시 시각 또는 카테고리가 올바르지 않습니다.'},400);
+  const result=await storeArticles(env.DB,[{title:input.title.trim().slice(0,500),source:provider==='coinness'?'코인니스':'쟁글',url,publishedAt:new Date(published).toISOString(),category,countries:['KR'],assets:category==='crypto'?['BTC','ETH']:[],importance,providerKey:provider,ingestionMethod:'manual'}]);
+  await usage(env.DB,provider,'news.manual_register',1,0);return json({ok:true,provider,...result},201);
+}
+
+export async function newsSourceSettings(request:Request,env:WorkflowEnv){
+  if(!env.DB)return json({error:'뉴스 D1 바인딩이 설정되지 않았습니다.'},503);
+  if(request.method==='GET'){const rows=await env.DB.prepare('SELECT * FROM news_source_settings ORDER BY provider_key').all();return json({sources:rows.results})}
+  const input=await request.json().catch(()=>null) as {provider?:unknown;intervalMinutes?:unknown;searchTerms?:unknown;enabled?:unknown}|null,provider=String(input?.provider||''),interval=Number(input?.intervalMinutes);
+  if(!['gdelt','naver','coinness','xangle'].includes(provider)||interval<5||interval>1440||!Array.isArray(input?.searchTerms))return json({error:'뉴스 소스 설정을 확인해 주세요.'},400);
+  const terms=input.searchTerms.map(String).map(term=>term.trim()).filter(Boolean).slice(0,20);if(terms.some(term=>term.length>100))return json({error:'검색어는 100자 이하여야 합니다.'},400);
+  const forcedManual=['coinness','xangle'].includes(provider),status=forcedManual?'partnership_required':input.enabled?'credentials_required':'disabled';
+  await env.DB.prepare('UPDATE news_source_settings SET enabled=?,interval_minutes=?,search_terms_json=?,connection_status=?,updated_at=CURRENT_TIMESTAMP WHERE provider_key=?').bind(forcedManual?0:input.enabled?1:0,interval,JSON.stringify(terms),status,provider).run();return json({ok:true,provider,manualOnly:forcedManual});
 }
 
 export async function analyzeNews(request:Request,env:WorkflowEnv){
@@ -77,3 +98,4 @@ async function technicalSnapshots(request:Request,assetsJson:string){
 }
 async function usage(db:D1Database,provider:string,operation:string,units:number,cost:number){await db.prepare('INSERT INTO api_usage_logs(provider,operation,units,estimated_cost_usd) VALUES(?,?,?,?)').bind(provider,operation,units,cost).run()}
 export function buildVideoScript(analysis:Record<string,unknown>){return {status:'draft_requires_fact_check',hook:String(analysis.news_title),sections:[{type:'news',text:String(analysis.summary)},{type:'impact',text:String(analysis.importance_reason)},{type:'scenario',text:String(analysis.short_term_scenario)},{type:'counter',text:String(analysis.counter_scenario)}],sourceUrl:analysis.source_url,branding:'5WaveFlow',disclaimer:'투자 자문이 아닌 정보 제공 목적입니다.'}}
+function safePartnerUrl(value:string,provider:'coinness'|'xangle'){try{const url=new URL(value),host=url.hostname.toLowerCase(),allowed=provider==='coinness'?(host==='coinness.com'||host.endsWith('.coinness.com')):(host==='xangle.io'||host.endsWith('.xangle.io'));return url.protocol==='https:'&&allowed?url.toString():null}catch{return null}}

@@ -12,6 +12,14 @@
 
 News stores title, source, canonical source URL and timestamps, but not unauthorized article bodies. URL hashes prevent duplicate articles and normalized headline fingerprints group related coverage. GDELT needs no API key; it indexes links to original publishers and is not a license to republish their full text.
 
+### Korean news sources
+
+- NAVER API HUB: `/api/news/naver` uses the official `/search/v1/news` endpoint with `NAVER_API_CLIENT_ID` and `NAVER_API_CLIENT_SECRET`. Current NAVER Search API terms prohibit storing/caching beyond limited continuity purposes and prohibit using results as AI input. Therefore results are displayed live with `no-store`, are not written to D1, and have AI/video actions disabled.
+- CoinNess: no documented public API or RSS was verified. The admin can register an original `coinness.com` HTTPS link and title. Automated collection stays `partnership_required` until CoinNess grants a feed or content agreement.
+- Xangle: no documented public API or RSS was verified. The admin can register an original `xangle.io` HTTPS link and title. Automated collection stays `partnership_required` until Xangle grants a feed or content agreement.
+
+`migrations/0005_news_sources.sql` adds per-source intervals, search terms, connection/error state, retry counters and collection-run usage records. Default interval is 15 minutes. NAVER search terms are editable under `/admin/news`.
+
 ## Manual infrastructure
 
 Apply `migrations/0004_news_video_automation.sql` to the existing D1 database. Configure an AI endpoint only after choosing its data retention and commercial terms. Bind a Cloudflare Queue producer as `VIDEO_RENDER_QUEUE`; its consumer must run in a separately approved Node environment with Remotion, Chromium and FFmpeg. Pages Functions cannot perform the render reliably. The renderer needs restricted R2 write credentials and calls `/api/video/webhook` with `VIDEO_RENDER_WEBHOOK_TOKEN`.
