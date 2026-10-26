@@ -2,7 +2,7 @@ import {json} from './social-publish';
 import type {D1Database} from '@cloudflare/workers-types';
 
 export type NewsCategory='us_market'|'kr_market'|'crypto'|'macro'|'company'|'international';
-export interface CollectedArticle {title:string;source:string;url:string;publishedAt:string;category:NewsCategory;countries:string[];assets:string[];importance:number;providerKey?:'gdelt'|'coinness'|'xangle';ingestionMethod?:'api'|'manual'}
+export interface CollectedArticle {title:string;summary?:string;source:string;url:string;publishedAt:string;category:NewsCategory;countries:string[];assets:string[];importance:number;providerKey?:'gdelt'|'coinness'|'xangle';ingestionMethod?:'api'|'manual'}
 export async function collectFromGdelt(fetcher:typeof fetch=fetch){
   const url=new URL('https://api.gdeltproject.org/api/v2/doc/doc');
   url.search=new URLSearchParams({query:'("S&P 500" OR NASDAQ OR KOSPI OR KOSDAQ OR Bitcoin OR Ethereum OR FOMC OR CPI OR earnings)',mode:'ArtList',format:'json',maxrecords:'100',sort:'HybridRel',timespan:'1d'}).toString();
@@ -41,7 +41,7 @@ export async function storeArticles(db:D1Database,articles:CollectedArticle[]){
     const eventId=event?.id||crypto.randomUUID();
     if(event)await db.prepare('UPDATE news_events SET article_count=article_count+1,latest_published_at=?,updated_at=CURRENT_TIMESTAMP WHERE id=?').bind(article.publishedAt,eventId).run();
     else await db.prepare('INSERT INTO news_events(id,fingerprint,headline,category,importance,first_published_at,latest_published_at) VALUES(?,?,?,?,?,?,?)').bind(eventId,fingerprint,article.title,article.category,article.importance,article.publishedAt,article.publishedAt).run();
-    await db.prepare('INSERT INTO news_articles(id,event_id,title,source,source_url,published_at,countries_json,assets_json,category,importance,content_hash,provider_key,ingestion_method) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)').bind(crypto.randomUUID(),eventId,article.title,article.source,normalizedUrl,article.publishedAt,JSON.stringify(article.countries),JSON.stringify(article.assets),article.category,article.importance,contentHash,article.providerKey||'gdelt',article.ingestionMethod||'api').run();inserted++;
+    await db.prepare('INSERT INTO news_articles(id,event_id,title,source,source_url,published_at,summary,countries_json,assets_json,category,importance,content_hash,provider_key,ingestion_method) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)').bind(crypto.randomUUID(),eventId,article.title,article.source,normalizedUrl,article.publishedAt,article.summary||null,JSON.stringify(article.countries),JSON.stringify(article.assets),article.category,article.importance,contentHash,article.providerKey||'gdelt',article.ingestionMethod||'api').run();inserted++;
   }
   return {fetched:articles.length,inserted,duplicates};
 }

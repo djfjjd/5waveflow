@@ -1,6 +1,6 @@
 import {forwardPublish,json,parsePublishRequest,PublishPayload,SocialPublishEnv} from '../../_shared/social-publish';
 import {createSignedMediaUrl,MAX_MP4_BYTES,MediaEnv,validateMp4} from '../../_shared/media';
-import {analyzeNews,approveVideoProject,automationSettings,collectNews,createVideoProject,newsSourceSettings,registerManualNews,WorkflowEnv} from '../../_shared/workflows';
+import {analyzeNews,approveVideoProject,automationSettings,collectNews,createVideoProject,importCoinnessPaste,newsSourceSettings,registerManualNews,WorkflowEnv} from '../../_shared/workflows';
 import {isAllowedAdminEmail} from '../../_shared/admin-auth';
 
 interface Env extends SocialPublishEnv,MediaEnv,WorkflowEnv { CF_ACCESS_TEAM_DOMAIN?:string; CF_ACCESS_AUD?:string; ADMIN_ALLOWED_EMAIL?:string }
@@ -20,11 +20,12 @@ export const onRequest:PagesFunction<Env>=async({request,env})=>{
     if(path==='news/collect'&&request.method==='POST')return await collectNews(env);
     if(path==='news/analyze'&&request.method==='POST')return await analyzeNews(request,env);
     if(path==='news/manual'&&request.method==='POST')return await registerManualNews(request,env);
+    if(path==='news/coinness-paste'&&request.method==='POST')return await importCoinnessPaste(request,env);
     if(path==='news/sources'&&(request.method==='GET'||request.method==='PUT'))return await newsSourceSettings(request,env);
     if(path==='video-projects'&&request.method==='POST')return await createVideoProject(request,env);
     if(path==='video-projects/approve'&&request.method==='POST')return await approveVideoProject(request,env);
     if(path==='automation/settings'&&(request.method==='GET'||request.method==='PUT'))return await automationSettings(request,env);
-    if(['publish','media','news/collect','news/analyze','news/manual','news/sources','video-projects','video-projects/approve','automation/settings'].includes(path)) return json({error:'Method not allowed'},405,{Allow:'GET, POST, PUT'});
+    if(['publish','media','news/collect','news/analyze','news/manual','news/coinness-paste','news/sources','video-projects','video-projects/approve','automation/settings'].includes(path)) return json({error:'Method not allowed'},405,{Allow:'GET, POST, PUT'});
     return json({ok:true,message:'Admin API foundation',databaseBound:Boolean(env.DB),identityVerified:true,expiresAt:claims.exp});
   }catch{return json({error:'관리자 요청을 처리하지 못했습니다.'},500)}
 };

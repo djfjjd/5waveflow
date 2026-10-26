@@ -1,6 +1,7 @@
 import {collectFromFederalReserve,collectFromGdelt,NewsCategory,storeArticles,validateAnalysis} from './news';
 import {json} from './social-publish';
 import type {D1Database} from '@cloudflare/workers-types';
+import {parseCoinnessPaste} from './coinness-paste';
 
 interface Queue {send(message:unknown,options?:{contentType?:'json'}):Promise<void>}
 export interface WorkflowEnv {DB?:D1Database;AI_ANALYSIS_ENDPOINT?:string;AI_ANALYSIS_API_KEY?:string;AI_ANALYSIS_MODEL?:string;VIDEO_RENDER_QUEUE?:Queue}
@@ -19,6 +20,13 @@ export async function registerManualNews(request:Request,env:WorkflowEnv){
   if(!url||!Number.isFinite(published)||published>Date.now()+300000||!['crypto','kr_market','us_market','macro','company','international'].includes(category))return json({error:'원문 도메인, 게시 시각 또는 카테고리가 올바르지 않습니다.'},400);
   const result=await storeArticles(env.DB,[{title:input.title.trim().slice(0,500),source:provider==='coinness'?'코인니스':'쟁글',url,publishedAt:new Date(published).toISOString(),category,countries:['KR'],assets:category==='crypto'?['BTC','ETH']:[],importance,providerKey:provider,ingestionMethod:'manual'}]);
   await usage(env.DB,provider,'news.manual_register',1,0);return json({ok:true,provider,...result},201);
+}
+
+export async function importCoinnessPaste(request:Request,env:WorkflowEnv){
+  if(!env.DB)return json({error:'뉴스 D1 바인딩이 설정되지 않았습니다.'},503);
+  const input=await request.json().catch(()=>null) as {text?:unknown}|null;if(typeof input?.text!=='string'||input.text.length<10||input.text.length>500000)return json({error:'코인니스 전체 페이지 텍스트를 확인해 주세요.'},400);
+  const articles=parseCoinnessPaste(input.text);if(!articles.length)return json({error:'시간과 제목이 포함된 속보를 찾지 못했습니다.'},400);
+  const result=await storeArticles(env.DB,articles);await usage(env.DB,'coinness','news.paste_import',articles.length,0);return json({ok:true,...result},201);
 }
 
 export async function newsSourceSettings(request:Request,env:WorkflowEnv){
