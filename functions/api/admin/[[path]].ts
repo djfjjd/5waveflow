@@ -24,6 +24,7 @@ export const onRequest:PagesFunction<Env>=async({request,env})=>{
     if(path==='news/sources'&&(request.method==='GET'||request.method==='PUT'))return await newsSourceSettings(request,env);
     if(path==='video-projects'&&request.method==='POST')return await createVideoProject(request,env);
     if(path==='video-projects/approve'&&request.method==='POST')return await approveVideoProject(request,env);
+    if(path.startsWith('video-projects/')&&request.method==='GET')return await videoProjectStatus(path.slice('video-projects/'.length),request,env);
     if(path==='automation/settings'&&(request.method==='GET'||request.method==='PUT'))return await automationSettings(request,env);
     if(['publish','media','news/collect','news/analyze','news/manual','news/coinness-paste','news/sources','video-projects','video-projects/approve','automation/settings'].includes(path)) return json({error:'Method not allowed'},405,{Allow:'GET, POST, PUT'});
     return json({ok:true,message:'Admin API foundation',databaseBound:Boolean(env.DB),identityVerified:true,expiresAt:claims.exp});
@@ -60,6 +61,17 @@ async function uploadMedia(request:Request,env:Env){
   await env.SNS_MEDIA_BUCKET.put(key,file.stream(),{httpMetadata:{contentType:'video/mp4',cacheControl:'private, no-store'},customMetadata:{originalName:file.name.slice(0,200),uploadedAt:now.toISOString()}});
   const mediaUrl=await createSignedMediaUrl(new URL(request.url).origin,key,env);
   return json({ok:true,key,mediaUrl,expiresIn:Number(env.SNS_MEDIA_URL_TTL_SECONDS||86400),size:file.size},201);
+}
+
+async function videoProjectStatus(projectId:string,request:Request,env:Env){
+  if(!env.DB)return json({error:'D1 바인딩이 설정되지 않았습니다.'},503);
+  if(!/^[0-9a-f-]{36}$/i.test(projectId))return json({error:'올바르지 않은 영상 프로젝트입니다.'},400);
+  const project=await env.DB.prepare(`SELECT p.id,p.title,p.status,p.output_r2_key,p.created_at,j.id job_id,j.status job_status,j.failure_reason,j.updated_at
+    FROM content_projects p LEFT JOIN video_render_jobs j ON j.content_project_id=p.id WHERE p.id=? ORDER BY j.created_at DESC LIMIT 1`).bind(projectId).first<Record<string,unknown>>();
+  if(!project)return json({error:'영상 프로젝트를 찾을 수 없습니다.'},404);
+  let mediaUrl:string|undefined;
+  if(project.status==='completed'&&typeof project.output_r2_key==='string')mediaUrl=await createSignedMediaUrl(new URL(request.url).origin,project.output_r2_key,env);
+  return json({projectId:project.id,title:project.title,status:project.job_status||project.status,projectStatus:project.status,jobId:project.job_id||null,failureReason:project.failure_reason||null,updatedAt:project.updated_at||project.created_at,mediaUrl});
 }
 
 async function preparePublishJob(db:D1Database,payload:PublishPayload,idempotencyKey:string){

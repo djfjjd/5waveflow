@@ -66,15 +66,15 @@ export async function analyzeNews(request:Request,env:WorkflowEnv){
 
 export async function createVideoProject(request:Request,env:WorkflowEnv){
   if(!env.DB)return json({error:'D1 바인딩이 설정되지 않았습니다.'},503);
-  const input=await request.json().catch(()=>null) as {analysisId?:unknown;duration?:unknown;style?:unknown;voice?:unknown;voiceSpeed?:unknown}|null;
+  const input=await request.json().catch(()=>null) as {mode?:unknown;analysisId?:unknown;duration?:unknown;style?:unknown;voice?:unknown;voiceSpeed?:unknown}|null;
   const duration=Number(input?.duration),style=String(input?.style||''),voice=String(input?.voice||''),speed=Number(input?.voiceSpeed||1);
-  if(typeof input?.analysisId!=='string'||![30,60,90].includes(duration)||!['briefing','chart','fast','crypto','markets'].includes(style)||!['male','female'].includes(voice)||speed<0.8||speed>1.3)return json({error:'영상 프로젝트 설정을 확인해 주세요.'},400);
-  const analysis=await env.DB.prepare('SELECT a.*,n.title news_title,n.id news_id,n.source_url FROM news_analysis a JOIN news_articles n ON n.id=a.news_id WHERE a.id=?').bind(input.analysisId).first<Record<string,unknown>>();
-  if(!analysis)return json({error:'완료된 뉴스 분석을 찾을 수 없습니다.'},404);
+  if(input?.mode!=='recent20'||![30,60,90].includes(duration)||!['briefing','chart','fast','crypto','markets'].includes(style)||!['male','female'].includes(voice)||speed<0.8||speed>1.3)return json({error:'영상 프로젝트 설정을 확인해 주세요.'},400);
+  const analyses=await env.DB.prepare("SELECT a.*,n.title news_title,n.id news_id,n.source,n.source_url,n.published_at FROM news_analysis a JOIN news_articles n ON n.id=a.news_id WHERE n.analysis_status='completed' ORDER BY n.published_at DESC LIMIT 20").all<Record<string,unknown>>();
+  if(!analyses.results.length)return json({error:'영상으로 만들 수 있는 완료된 뉴스 분석이 없습니다.'},404);
   const id=crypto.randomUUID();
-  const script=buildVideoScript(analysis);
-  await env.DB.prepare("INSERT INTO content_projects(id,analysis_id,news_analysis_id,language,duration_seconds,template_id,subtitle_style,status,title,style,voice,voice_speed,script_json) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)").bind(id,null,input.analysisId,'ko',duration,'vertical-1080x1920','keyword-highlight','draft',analysis.news_title,style,voice,speed,JSON.stringify(script)).run();
-  return json({ok:true,projectId:id,status:'draft',script,requiresApproval:true},201);
+  const script=buildRecentNewsVideoScript(analyses.results),title=`최근 ${analyses.results.length}건 금융 뉴스 브리핑`;
+  await env.DB.prepare("INSERT INTO content_projects(id,analysis_id,news_analysis_id,language,duration_seconds,template_id,subtitle_style,status,title,style,voice,voice_speed,script_json) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)").bind(id,null,analyses.results[0].id,'ko',duration,'vertical-1080x1920','keyword-highlight','draft',title,style,voice,speed,JSON.stringify(script)).run();
+  return json({ok:true,projectId:id,status:'draft',title,newsCount:analyses.results.length,script,requiresApproval:true},201);
 }
 
 export async function approveVideoProject(request:Request,env:WorkflowEnv){
@@ -106,4 +106,5 @@ async function technicalSnapshots(request:Request,assetsJson:string){
 }
 async function usage(db:D1Database,provider:string,operation:string,units:number,cost:number){await db.prepare('INSERT INTO api_usage_logs(provider,operation,units,estimated_cost_usd) VALUES(?,?,?,?)').bind(provider,operation,units,cost).run()}
 export function buildVideoScript(analysis:Record<string,unknown>){return {status:'draft_requires_fact_check',hook:String(analysis.news_title),sections:[{type:'news',text:String(analysis.summary)},{type:'impact',text:String(analysis.importance_reason)},{type:'scenario',text:String(analysis.short_term_scenario)},{type:'counter',text:String(analysis.counter_scenario)}],sourceUrl:analysis.source_url,branding:'5WaveFlow',disclaimer:'투자 자문이 아닌 정보 제공 목적입니다.'}}
+export function buildRecentNewsVideoScript(analyses:Record<string,unknown>[]){return {status:'draft_requires_fact_check',hook:`최근 금융 뉴스 ${analyses.length}건을 빠르게 정리합니다.`,sections:analyses.map((analysis,index)=>({type:'news',index:index+1,title:String(analysis.news_title),text:String(analysis.summary),sentiment:String(analysis.sentiment),source:String(analysis.source),sourceUrl:String(analysis.source_url),publishedAt:String(analysis.published_at)})),branding:'5WaveFlow',disclaimer:'기사 원문이 아닌 5WaveFlow 분석 요약이며 투자 자문이 아닙니다.'}}
 function safePartnerUrl(value:string,provider:'coinness'|'xangle'){try{const url=new URL(value),host=url.hostname.toLowerCase(),allowed=provider==='coinness'?(host==='coinness.com'||host.endsWith('.coinness.com')):(host==='xangle.io'||host.endsWith('.xangle.io'));return url.protocol==='https:'&&allowed?url.toString():null}catch{return null}}

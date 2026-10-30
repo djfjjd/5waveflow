@@ -25,6 +25,7 @@ function PublishPanel(){
   const [result,setResult]=useState<PublishResult|null>(null);
   const [error,setError]=useState('');
   const [idempotencyKey,setIdempotencyKey]=useState(()=>crypto.randomUUID());
+  useEffect(()=>{const saved=sessionStorage.getItem('5waveflow-rendered-video');if(!saved)return;try{const value=JSON.parse(saved) as {mediaUrl?:string;title?:string;caption?:string};if(value.mediaUrl)setMediaUrl(value.mediaUrl);if(value.title)setTitle(value.title);if(value.caption)setCaption(value.caption);sessionStorage.removeItem('5waveflow-rendered-video')}catch{sessionStorage.removeItem('5waveflow-rendered-video')}},[]);
   useEffect(()=>{if(!file){setPreviewUrl('');return}const url=URL.createObjectURL(file);setPreviewUrl(url);return()=>URL.revokeObjectURL(url)},[file]);
   const toggle=(platform:Platform)=>setSelected(current=>current.includes(platform)?current.filter(item=>item!==platform):[...current,platform]);
   const upload=()=>{
