@@ -4,7 +4,7 @@ import type {D1Database} from '@cloudflare/workers-types';
 import {parseCoinnessPaste} from './coinness-paste';
 
 interface Queue {send(message:unknown,options?:{contentType?:'json'}):Promise<void>}
-export interface WorkflowEnv {DB?:D1Database;AI_ANALYSIS_ENDPOINT?:string;AI_ANALYSIS_API_KEY?:string;AI_ANALYSIS_MODEL?:string;VIDEO_RENDER_QUEUE?:Queue}
+export interface WorkflowEnv {DB?:D1Database;AI_ANALYSIS_ENDPOINT?:string;AI_ANALYSIS_API_KEY?:string;AI_ANALYSIS_MODEL?:string;VIDEO_RENDER_QUEUE?:Queue;VIDEO_RENDER_DISPATCH_URL?:string;VIDEO_RENDER_DISPATCH_TOKEN?:string}
 
 export async function collectNews(env:WorkflowEnv){
   if(!env.DB)return json({error:'뉴스 D1 바인딩이 설정되지 않았습니다.'},503);
@@ -82,16 +82,19 @@ export async function createVideoProject(request:Request,env:WorkflowEnv){
 
 export async function approveVideoProject(request:Request,env:WorkflowEnv){
   if(!env.DB)return json({error:'D1 바인딩이 설정되지 않았습니다.'},503);
-  if(!env.VIDEO_RENDER_QUEUE)return json({error:'VIDEO_RENDER_QUEUE가 연결되지 않아 렌더링을 시작할 수 없습니다.'},503);
+  if(!env.VIDEO_RENDER_QUEUE&&!validRenderDispatch(env.VIDEO_RENDER_DISPATCH_URL,env.VIDEO_RENDER_DISPATCH_TOKEN,new URL(request.url).origin))return json({error:'영상 렌더 서비스가 연결되지 않았습니다. VIDEO_RENDER_DISPATCH_URL과 VIDEO_RENDER_DISPATCH_TOKEN을 설정해 주세요.'},503);
   const input=await request.json().catch(()=>null) as {projectId?:unknown;idempotencyKey?:unknown}|null;
   if(typeof input?.projectId!=='string'||typeof input.idempotencyKey!=='string'||input.idempotencyKey.length>100)return json({error:'프로젝트와 중복 방지 키가 필요합니다.'},400);
   const project=await env.DB.prepare("SELECT * FROM content_projects WHERE id=? AND status='draft'").bind(input.projectId).first<Record<string,unknown>>();
   if(!project)return json({error:'승인 가능한 초안 프로젝트가 없습니다.'},404);
   const existing=await env.DB.prepare('SELECT id,status FROM video_render_jobs WHERE idempotency_key=?').bind(input.idempotencyKey).first();if(existing)return json({ok:true,duplicate:true,...existing});
-  const jobId=crypto.randomUUID();await env.DB.batch([env.DB.prepare("INSERT INTO video_render_jobs(id,content_project_id,idempotency_key,status) VALUES(?,?,?,'queued')").bind(jobId,input.projectId,input.idempotencyKey),env.DB.prepare("UPDATE content_projects SET status='queued',approved_at=CURRENT_TIMESTAMP WHERE id=?").bind(input.projectId)]);
-  await env.VIDEO_RENDER_QUEUE.send({version:1,jobId,projectId:input.projectId,composition:'NewsShort',width:1080,height:1920,fps:30,durationSeconds:project.duration_seconds,script:JSON.parse(String(project.script_json)),captionsFormat:'remotion-caption-json',output:{format:'mp4',r2Binding:'SNS_MEDIA_BUCKET'}},{contentType:'json'});
+  const jobId=crypto.randomUUID(),message={version:1,jobId,projectId:input.projectId,composition:'NewsShort',width:1080,height:1920,fps:30,durationSeconds:project.duration_seconds,script:JSON.parse(String(project.script_json)),captionsFormat:'remotion-caption-json',output:{format:'mp4',r2Binding:'SNS_MEDIA_BUCKET'},callbackUrl:`${new URL(request.url).origin}/api/video/webhook`};await env.DB.batch([env.DB.prepare("INSERT INTO video_render_jobs(id,content_project_id,idempotency_key,status) VALUES(?,?,?,'queued')").bind(jobId,input.projectId,input.idempotencyKey),env.DB.prepare("UPDATE content_projects SET status='queued',approved_at=CURRENT_TIMESTAMP WHERE id=?").bind(input.projectId)]);
+  try{if(env.VIDEO_RENDER_QUEUE)await env.VIDEO_RENDER_QUEUE.send(message,{contentType:'json'});else await dispatchRender(message,env)}catch{await env.DB.batch([env.DB.prepare("UPDATE video_render_jobs SET status='failed',failure_reason='Render dispatch failed',attempt_count=attempt_count+1,updated_at=CURRENT_TIMESTAMP WHERE id=?").bind(jobId),env.DB.prepare("UPDATE content_projects SET status='draft' WHERE id=?").bind(input.projectId)]);return json({error:'영상 렌더 서비스 요청에 실패했습니다. 연결 주소와 인증 설정을 확인해 주세요.'},502)}
   return json({ok:true,jobId,status:'queued'},202);
 }
+
+async function dispatchRender(message:Record<string,unknown>,env:WorkflowEnv){const response=await fetch(String(env.VIDEO_RENDER_DISPATCH_URL),{method:'POST',headers:{'content-type':'application/json',authorization:`Bearer ${env.VIDEO_RENDER_DISPATCH_TOKEN}`},body:JSON.stringify(message),signal:AbortSignal.timeout(10000)});if(!response.ok)throw new Error('Render dispatch rejected')}
+export function validRenderDispatch(urlValue?:string,token?:string,siteOrigin?:string){if(!urlValue||!token||token.length<32)return false;try{const url=new URL(urlValue),origin=siteOrigin?new URL(siteOrigin).origin:'';return url.protocol==='https:'&&url.origin!==origin&&!['localhost','127.0.0.1','::1'].includes(url.hostname)}catch{return false}}
 
 export async function automationSettings(request:Request,env:WorkflowEnv){
   if(!env.DB)return json({error:'D1 바인딩이 설정되지 않았습니다.'},503);

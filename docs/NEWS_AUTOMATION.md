@@ -22,7 +22,7 @@ News stores title, source, canonical source URL and timestamps, but not unauthor
 
 ## Manual infrastructure
 
-Apply `migrations/0004_news_video_automation.sql` to the existing D1 database. Configure an AI endpoint only after choosing its data retention and commercial terms. Bind a Cloudflare Queue producer as `VIDEO_RENDER_QUEUE`; its consumer must run in a separately approved Node environment with Remotion, Chromium and FFmpeg. Pages Functions cannot perform the render reliably. The renderer needs restricted R2 write credentials and calls `/api/video/webhook` with `VIDEO_RENDER_WEBHOOK_TOKEN`.
+Apply `migrations/0004_news_video_automation.sql` to the existing D1 database. Configure an AI endpoint only after choosing its data retention and commercial terms. Rendering can use either a Cloudflare Queue producer bound as `VIDEO_RENDER_QUEUE`, or an external HTTPS renderer configured with `VIDEO_RENDER_DISPATCH_URL` and `VIDEO_RENDER_DISPATCH_TOKEN`. The renderer must run in a separately approved Node environment with Remotion, Chromium and FFmpeg because Pages Functions cannot perform the render reliably. It needs restricted R2 write credentials and calls `/api/video/webhook` with `VIDEO_RENDER_WEBHOOK_TOKEN`.
 
 Schedule `POST /api/admin/news/collect` every 15 minutes from an authenticated Make schedule or another approved scheduler. Cloudflare Access service-token headers are required. Do not expose the collection endpoint publicly.
 
