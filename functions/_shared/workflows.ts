@@ -93,7 +93,7 @@ export async function approveVideoProject(request:Request,env:WorkflowEnv){
   return json({ok:true,jobId,status:'queued'},202);
 }
 
-async function dispatchRender(message:Record<string,unknown>,env:WorkflowEnv){const response=await fetch(String(env.VIDEO_RENDER_DISPATCH_URL),{method:'POST',headers:{'content-type':'application/json',authorization:`Bearer ${env.VIDEO_RENDER_DISPATCH_TOKEN}`},body:JSON.stringify(message),signal:AbortSignal.timeout(10000)});if(!response.ok)throw new Error('Render dispatch rejected')}
+async function dispatchRender(message:Record<string,unknown>,env:WorkflowEnv){const token=String(env.VIDEO_RENDER_DISPATCH_TOKEN),response=await fetch(String(env.VIDEO_RENDER_DISPATCH_URL),{method:'POST',headers:{'content-type':'application/json',authorization:`Bearer ${token}`,'x-make-apikey':token},body:JSON.stringify(message),signal:AbortSignal.timeout(10000)});if(!response.ok)throw new Error('Render dispatch rejected')}
 export function validRenderDispatch(urlValue?:string,token?:string,siteOrigin?:string){if(!urlValue||!token||token.length<32)return false;try{const url=new URL(urlValue),origin=siteOrigin?new URL(siteOrigin).origin:'';return url.protocol==='https:'&&url.origin!==origin&&!['localhost','127.0.0.1','::1'].includes(url.hostname)}catch{return false}}
 
 export async function automationSettings(request:Request,env:WorkflowEnv){
