@@ -3,8 +3,7 @@ import {hasValidBearer,hasValidSecret,json} from '../../_shared/social-publish';
 interface MediaBucket {head(key:string):Promise<{size:number}|null>}
 interface Env {DB?:D1Database;SNS_MEDIA_BUCKET?:MediaBucket;VIDEO_RENDER_WEBHOOK_TOKEN?:string;VIDEO_RENDER_DISPATCH_TOKEN?:string}
 export const onRequestPost:PagesFunction<Env>=async({request,env})=>{
-  const makeKey=request.headers.get('x-make-apikey');
-  const authorized=await hasValidBearer(request,env.VIDEO_RENDER_WEBHOOK_TOKEN)||await hasValidSecret(makeKey,env.VIDEO_RENDER_WEBHOOK_TOKEN)||await hasValidSecret(makeKey,env.VIDEO_RENDER_DISPATCH_TOKEN);
+  const authorized=await hasValidBearer(request,env.VIDEO_RENDER_WEBHOOK_TOKEN)||await hasValidSecret(request.headers.get('x-make-apikey'),env.VIDEO_RENDER_DISPATCH_TOKEN);
   if(!authorized)return json({error:'Unauthorized'},401,{'WWW-Authenticate':'Bearer'});
   if(!env.DB)return json({error:'D1 is not configured'},503);
   const input=await request.json().catch(()=>null) as {jobId?:unknown;status?:unknown;r2Key?:unknown;error?:unknown;durationSeconds?:unknown;estimatedCostUsd?:unknown}|null;
