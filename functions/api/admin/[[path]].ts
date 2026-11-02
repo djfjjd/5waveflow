@@ -67,6 +67,10 @@ async function uploadMedia(request:Request,env:Env){
 async function videoProjectStatus(projectId:string,request:Request,env:Env){
   if(!env.DB)return json({error:'D1 바인딩이 설정되지 않았습니다.'},503);
   if(!/^[0-9a-f-]{36}$/i.test(projectId))return json({error:'올바르지 않은 영상 프로젝트입니다.'},400);
+  await env.DB.batch([
+    env.DB.prepare("UPDATE video_render_jobs SET status='failed',failure_reason='렌더 서비스가 3분 안에 상태 콜백을 보내지 않았습니다.',attempt_count=attempt_count+1,updated_at=CURRENT_TIMESTAMP WHERE content_project_id=? AND status IN ('queued','generating_script','generating_audio','rendering') AND updated_at <= datetime('now','-3 minutes')").bind(projectId),
+    env.DB.prepare("UPDATE content_projects SET status='draft' WHERE id=? AND EXISTS(SELECT 1 FROM video_render_jobs WHERE content_project_id=? AND status='failed' AND failure_reason='렌더 서비스가 3분 안에 상태 콜백을 보내지 않았습니다.') AND NOT EXISTS(SELECT 1 FROM video_render_jobs WHERE content_project_id=? AND status IN ('queued','generating_script','generating_audio','rendering'))").bind(projectId,projectId,projectId)
+  ]);
   const project=await env.DB.prepare(`SELECT p.id,p.title,p.status,p.output_r2_key,p.created_at,j.id job_id,j.status job_status,j.failure_reason,j.updated_at
     FROM content_projects p LEFT JOIN video_render_jobs j ON j.content_project_id=p.id WHERE p.id=? ORDER BY j.created_at DESC LIMIT 1`).bind(projectId).first<Record<string,unknown>>();
   if(!project)return json({error:'영상 프로젝트를 찾을 수 없습니다.'},404);
