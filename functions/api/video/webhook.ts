@@ -11,8 +11,9 @@ export const onRequestPost:PagesFunction<Env>=async({request,env})=>{
   if(typeof input?.jobId!=='string'||!['generating_script','generating_audio','rendering','completed','failed'].includes(String(input.status)))return json({error:'Invalid render status event'},400);
   const status=String(input.status),job=await env.DB.prepare('SELECT content_project_id FROM video_render_jobs WHERE id=?').bind(input.jobId).first<{content_project_id:string}>();if(!job)return json({error:'Render job not found'},404);
   if(status==='failed'&&isRenderConnectionProbe(input.error)){
-    await env.DB.batch([env.DB.prepare("UPDATE video_render_jobs SET status='queued',failure_reason=NULL,updated_at=CURRENT_TIMESTAMP WHERE id=?").bind(input.jobId),env.DB.prepare("UPDATE content_projects SET status='queued' WHERE id=?").bind(job.content_project_id)]);
-    return json({ok:true,jobId:input.jobId,status:'queued',connectionVerified:true});
+    const reason='Make 연결은 확인됐지만 실제 렌더 모듈이 실행되지 않았습니다. Make 시나리오에 영상 렌더 단계와 completed 콜백을 추가해 주세요.';
+    await env.DB.batch([env.DB.prepare("UPDATE video_render_jobs SET status='failed',failure_reason=?,updated_at=CURRENT_TIMESTAMP,attempt_count=attempt_count+1 WHERE id=?").bind(reason,input.jobId),env.DB.prepare("UPDATE content_projects SET status='draft' WHERE id=?").bind(job.content_project_id)]);
+    return json({ok:true,jobId:input.jobId,status:'failed',connectionVerified:true,rendererConfigured:false});
   }
   if(status==='completed'){
     if(typeof input.r2Key!=='string'||!env.SNS_MEDIA_BUCKET)return json({error:'Completed render requires an R2 object'},400);
