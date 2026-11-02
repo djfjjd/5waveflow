@@ -89,7 +89,7 @@ export async function approveVideoProject(request:Request,env:WorkflowEnv){
   if(!env.VIDEO_RENDER_QUEUE&&!validRenderDispatch(renderConfig.url,renderConfig.token,new URL(request.url).origin))return json({error:'VIDEO_RENDER_DISPATCH_URL은 5waveflow가 아닌 외부 HTTPS Webhook 주소여야 합니다.'},503);
   const input=await request.json().catch(()=>null) as {projectId?:unknown;idempotencyKey?:unknown}|null;
   if(typeof input?.projectId!=='string'||typeof input.idempotencyKey!=='string'||input.idempotencyKey.length>100)return json({error:'프로젝트와 중복 방지 키가 필요합니다.'},400);
-  const project=await env.DB.prepare("SELECT * FROM content_projects WHERE id=? AND status='draft'").bind(input.projectId).first<Record<string,unknown>>();
+  const project=await env.DB.prepare("SELECT * FROM content_projects WHERE id=? AND status IN ('draft','failed')").bind(input.projectId).first<Record<string,unknown>>();
   if(!project)return json({error:'승인 가능한 초안 프로젝트가 없습니다.'},404);
   const existing=await env.DB.prepare('SELECT id,status FROM video_render_jobs WHERE idempotency_key=?').bind(input.idempotencyKey).first();if(existing)return json({ok:true,duplicate:true,...existing});
   const jobId=crypto.randomUUID(),message={version:1,jobId,projectId:input.projectId,composition:'NewsShort',width:1080,height:1920,fps:30,durationSeconds:project.duration_seconds,script:JSON.parse(String(project.script_json)),captionsFormat:'remotion-caption-json',output:{format:'mp4',r2Binding:'SNS_MEDIA_BUCKET'},callbackUrl:`${new URL(request.url).origin}/api/video/webhook`};await env.DB.batch([env.DB.prepare("INSERT INTO video_render_jobs(id,content_project_id,idempotency_key,status) VALUES(?,?,?,'queued')").bind(jobId,input.projectId,input.idempotencyKey),env.DB.prepare("UPDATE content_projects SET status='queued',approved_at=CURRENT_TIMESTAMP WHERE id=?").bind(input.projectId)]);
@@ -101,6 +101,7 @@ async function dispatchRender(message:Record<string,unknown>,config:{url:string;
 export function renderDispatchConfig(env:WorkflowEnv){return {url:normalizeRenderSetting(env.VIDEO_RENDER_DISPATCH_URL)||normalizeRenderSetting(env.SNS_PUBLISH_WEBHOOK_URL),token:normalizeRenderSetting(env.VIDEO_RENDER_DISPATCH_TOKEN)||normalizeRenderSetting(env.SNS_PUBLISH_WEBHOOK_TOKEN)}}
 export function validRenderDispatch(urlValue?:string,token?:string,siteOrigin?:string){const urlText=normalizeRenderSetting(urlValue),secret=normalizeRenderSetting(token);if(!urlText||secret.length<16)return false;try{const url=new URL(urlText),origin=siteOrigin?new URL(siteOrigin).origin:'';return url.protocol==='https:'&&url.origin!==origin&&!['localhost','127.0.0.1','::1'].includes(url.hostname)}catch{return false}}
 function normalizeRenderSetting(value?:string){const trimmed=String(value||'').trim();if(trimmed.length>=2&&((trimmed.startsWith('"')&&trimmed.endsWith('"'))||(trimmed.startsWith("'")&&trimmed.endsWith("'"))))return trimmed.slice(1,-1).trim();return trimmed}
+export function isRenderConnectionProbe(error:unknown){return String(error||'').trim()==='Make 콜백 연결 테스트'}
 
 export async function automationSettings(request:Request,env:WorkflowEnv){
   if(!env.DB)return json({error:'D1 바인딩이 설정되지 않았습니다.'},503);
