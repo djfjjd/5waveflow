@@ -1,5 +1,5 @@
 import {describe,expect,it} from 'vitest';
-import {hasValidBearer,parsePublishRequest,safeTarget,webhookAuthHeaders} from '../../functions/_shared/social-publish';
+import {hasValidBearer,hasValidWebhookAuth,parsePublishRequest,safeTarget,webhookAuthHeaders} from '../../functions/_shared/social-publish';
 
 const secret='test-secret-that-is-at-least-32-characters';
 
@@ -14,6 +14,13 @@ describe('SNS publish contract',()=>{
     expect(await hasValidBearer(new Request('https://example.com',{headers:{authorization:`Bearer ${secret}`}}),secret)).toBe(true);
     expect(await hasValidBearer(new Request('https://example.com',{headers:{authorization:'Bearer wrong-token'}}),secret)).toBe(false);
     expect(await hasValidBearer(new Request('https://example.com'),secret)).toBe(false);
+  });
+
+  it('accepts either trusted render token with Bearer or Make authentication',async()=>{
+    const dispatch='dispatch-token-that-is-at-least-32-characters';
+    expect(await hasValidWebhookAuth(new Request('https://example.com',{headers:{authorization:`Bearer ${dispatch}`}}),[secret,dispatch])).toBe(true);
+    expect(await hasValidWebhookAuth(new Request('https://example.com',{headers:{'x-make-apikey':secret}}),[secret,dispatch])).toBe(true);
+    expect(await hasValidWebhookAuth(new Request('https://example.com',{headers:{authorization:'Bearer invalid'}}),[secret,dispatch])).toBe(false);
   });
 
   it('uses x-make-apikey only for Make Custom Webhooks',()=>{

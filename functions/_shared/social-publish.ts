@@ -57,5 +57,11 @@ export async function hasValidSecret(supplied:string|undefined|null,secret?:stri
   return mismatch===0;
 }
 
+export async function hasValidWebhookAuth(request:Request,secrets:(string|undefined)[]){
+  const makeKey=request.headers.get('x-make-apikey');
+  for(const secret of secrets)if(await hasValidBearer(request,secret)||await hasValidSecret(makeKey,secret))return true;
+  return false;
+}
+
 async function digest(value:string){return new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(value)))}
 export function json(body:unknown,status=200,extraHeaders:Record<string,string>={}){return new Response(JSON.stringify(body),{status,headers:{'content-type':'application/json','Cache-Control':'no-store','X-Content-Type-Options':'nosniff',...extraHeaders}})}
