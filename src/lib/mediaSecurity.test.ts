@@ -1,5 +1,5 @@
 import {describe,expect,it} from 'vitest';
-import {createSignedMediaUrl,validateMp4,verifySignedMediaUrl} from '../../functions/_shared/media';
+import {createSignedMediaUrl,isAdminUploadedMediaKey,validateMp4,verifySignedMediaUrl} from '../../functions/_shared/media';
 
 const secret='media-signing-secret-at-least-32-characters';
 
@@ -15,5 +15,11 @@ describe('private SNS media',()=>{
     const url=new URL(await createSignedMediaUrl('https://5waveflow.pages.dev','sns/2026/10/video.mp4',{SNS_MEDIA_SIGNING_SECRET:secret,SNS_MEDIA_URL_TTL_SECONDS:'3600'}));
     expect(await verifySignedMediaUrl('sns/2026/10/video.mp4',url.searchParams.get('expires'),url.searchParams.get('signature'),secret)).toBe(true);
     expect(await verifySignedMediaUrl('sns/2026/10/other.mp4',url.searchParams.get('expires'),url.searchParams.get('signature'),secret)).toBe(false);
+  });
+
+  it('only accepts media keys created by the admin MP4 uploader',()=>{
+    expect(isAdminUploadedMediaKey('sns/2026/11/550e8400-e29b-41d4-a716-446655440000.mp4')).toBe(true);
+    expect(isAdminUploadedMediaKey('../private/video.mp4')).toBe(false);
+    expect(isAdminUploadedMediaKey('renders/completed.mp4')).toBe(false);
   });
 });

@@ -1,5 +1,5 @@
 import {forwardPublish,json,parsePublishRequest,PublishPayload,SocialPublishEnv} from '../../_shared/social-publish';
-import {createSignedMediaUrl,MAX_MP4_BYTES,MediaEnv,validateMp4} from '../../_shared/media';
+import {createSignedMediaUrl,isAdminUploadedMediaKey,MAX_MP4_BYTES,MediaEnv,validateMp4} from '../../_shared/media';
 import {analyzeNews,approveVideoProject,automationSettings,collectNews,createVideoProject,importCoinnessPaste,newsSourceSettings,registerManualNews,WorkflowEnv} from '../../_shared/workflows';
 import {isAllowedAdminEmail} from '../../_shared/admin-auth';
 
@@ -24,9 +24,10 @@ export const onRequest:PagesFunction<Env>=async({request,env})=>{
     if(path==='news/sources'&&(request.method==='GET'||request.method==='PUT'))return await newsSourceSettings(request,env);
     if(path==='video-projects'&&request.method==='POST')return await createVideoProject(request,env);
     if(path==='video-projects/approve'&&request.method==='POST')return await approveVideoProject(request,env);
+    if(path==='video-projects/complete-upload'&&request.method==='POST')return await completeVideoUpload(request,env);
     if(path.startsWith('video-projects/')&&request.method==='GET')return await videoProjectStatus(path.slice('video-projects/'.length),request,env);
     if(path==='automation/settings'&&(request.method==='GET'||request.method==='PUT'))return await automationSettings(request,env);
-    if(['publish','media','news/collect','news/analyze','news/manual','news/coinness-paste','news/sources','video-projects','video-projects/approve','automation/settings'].includes(path)) return json({error:'Method not allowed'},405,{Allow:'GET, POST, PUT'});
+    if(['publish','media','news/collect','news/analyze','news/manual','news/coinness-paste','news/sources','video-projects','video-projects/approve','video-projects/complete-upload','automation/settings'].includes(path)) return json({error:'Method not allowed'},405,{Allow:'GET, POST, PUT'});
     return json({ok:true,message:'Admin API foundation',databaseBound:Boolean(env.DB),identityVerified:true,expiresAt:claims.exp});
   }catch{return json({error:'관리자 요청을 처리하지 못했습니다.'},500)}
 };
@@ -72,6 +73,29 @@ async function videoProjectStatus(projectId:string,request:Request,env:Env){
   let mediaUrl:string|undefined;
   if(project.status==='completed'&&typeof project.output_r2_key==='string')mediaUrl=await createSignedMediaUrl(new URL(request.url).origin,project.output_r2_key,env);
   return json({projectId:project.id,title:project.title,status:project.job_status||project.status,projectStatus:project.status,jobId:project.job_id||null,failureReason:project.failure_reason||null,updatedAt:project.updated_at||project.created_at,mediaUrl});
+}
+
+async function completeVideoUpload(request:Request,env:Env){
+  if(!env.DB)return json({error:'D1 바인딩이 설정되지 않았습니다.'},503);
+  if(!env.SNS_MEDIA_BUCKET)return json({error:'R2 미디어 버킷이 설정되지 않았습니다.'},503);
+  const input=await request.json().catch(()=>null) as {projectId?:unknown;key?:unknown}|null;
+  if(typeof input?.projectId!=='string'||!/^[0-9a-f-]{36}$/i.test(input.projectId))return json({error:'올바르지 않은 영상 프로젝트입니다.'},400);
+  if(!isAdminUploadedMediaKey(input.key))return json({error:'관리자 MP4 업로드 키가 올바르지 않습니다.'},400);
+  const [project,object]=await Promise.all([
+    env.DB.prepare('SELECT id,title FROM content_projects WHERE id=?').bind(input.projectId).first<{id:string;title:string|null}>(),
+    env.SNS_MEDIA_BUCKET.head(input.key)
+  ]);
+  if(!project)return json({error:'영상 프로젝트를 찾을 수 없습니다.'},404);
+  if(!object)return json({error:'업로드된 MP4를 R2에서 찾을 수 없습니다.'},400);
+  const job=await env.DB.prepare('SELECT id FROM video_render_jobs WHERE content_project_id=? ORDER BY created_at DESC LIMIT 1').bind(project.id).first<{id:string}>();
+  const statements=[
+    env.DB.prepare("UPDATE content_projects SET status='completed',output_r2_key=? WHERE id=?").bind(input.key,project.id),
+    env.DB.prepare("INSERT OR IGNORE INTO media_assets(id,content_project_id,r2_key,media_type,mime_type,size_bytes,duration_seconds,rights_source) VALUES(?,?,?,'video','video/mp4',?,NULL,'admin-upload')").bind(crypto.randomUUID(),project.id,input.key,object.size)
+  ];
+  if(job)statements.push(env.DB.prepare("UPDATE video_render_jobs SET status='completed',failure_reason=NULL,completed_at=CURRENT_TIMESTAMP,updated_at=CURRENT_TIMESTAMP,attempt_count=attempt_count+1 WHERE id=?").bind(job.id));
+  await env.DB.batch(statements);
+  const mediaUrl=await createSignedMediaUrl(new URL(request.url).origin,input.key,env);
+  return json({ok:true,projectId:project.id,jobId:job?.id||null,title:project.title||'최근 금융 뉴스 브리핑',status:'completed',mediaUrl});
 }
 
 async function preparePublishJob(db:D1Database,payload:PublishPayload,idempotencyKey:string){

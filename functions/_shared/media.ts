@@ -9,6 +9,10 @@ interface MediaBucket {
 }
 export interface MediaEnv { SNS_MEDIA_BUCKET?:MediaBucket; SNS_MEDIA_SIGNING_SECRET?:string; SNS_MEDIA_URL_TTL_SECONDS?:string }
 
+export function isAdminUploadedMediaKey(value:unknown):value is string{
+  return typeof value==='string'&&/^sns\/\d{4}\/\d{2}\/[0-9a-f-]{36}\.mp4$/i.test(value);
+}
+
 export async function validateMp4(file:File){
   if(file.size<16||file.size>MAX_MP4_BYTES)return `MP4 파일은 16바이트 이상 ${MAX_MP4_BYTES/1024/1024}MB 이하여야 합니다.`;
   if(file.type.toLowerCase()!=='video/mp4')return 'MIME 타입이 video/mp4인 파일만 업로드할 수 있습니다.';
