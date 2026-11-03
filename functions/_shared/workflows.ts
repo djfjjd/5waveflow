@@ -4,7 +4,7 @@ import type {D1Database} from '@cloudflare/workers-types';
 import {parseCoinnessPaste} from './coinness-paste';
 
 interface Queue {send(message:unknown,options?:{contentType?:'json'}):Promise<void>}
-export interface WorkflowEnv {DB?:D1Database;AI_ANALYSIS_ENDPOINT?:string;AI_ANALYSIS_API_KEY?:string;AI_ANALYSIS_MODEL?:string;VIDEO_RENDER_QUEUE?:Queue;VIDEO_RENDER_DISPATCH_URL?:string;VIDEO_RENDER_DISPATCH_TOKEN?:string;SNS_PUBLISH_WEBHOOK_URL?:string;SNS_PUBLISH_WEBHOOK_TOKEN?:string}
+export interface WorkflowEnv {DB?:D1Database;AI_ANALYSIS_ENDPOINT?:string;AI_ANALYSIS_API_KEY?:string;AI_ANALYSIS_MODEL?:string;VIDEO_RENDER_QUEUE?:Queue;VIDEO_RENDER_SERVICE_URL?:string;VIDEO_RENDER_DISPATCH_URL?:string;VIDEO_RENDER_DISPATCH_TOKEN?:string}
 
 export async function collectNews(env:WorkflowEnv){
   if(!env.DB)return json({error:'뉴스 D1 바인딩이 설정되지 않았습니다.'},503);
@@ -83,8 +83,8 @@ export async function createVideoProject(request:Request,env:WorkflowEnv){
 export async function approveVideoProject(request:Request,env:WorkflowEnv){
   if(!env.DB)return json({error:'D1 바인딩이 설정되지 않았습니다.'},503);
   const renderConfig=renderDispatchConfig(env);
-  if(!env.VIDEO_RENDER_QUEUE&&!renderConfig.url)return json({error:'영상 Webhook URL을 찾을 수 없습니다. VIDEO_RENDER_DISPATCH_URL 또는 SNS_PUBLISH_WEBHOOK_URL을 확인해 주세요.'},503);
-  if(!env.VIDEO_RENDER_QUEUE&&!renderConfig.token)return json({error:'영상 Webhook 토큰을 찾을 수 없습니다. VIDEO_RENDER_DISPATCH_TOKEN 또는 SNS_PUBLISH_WEBHOOK_TOKEN을 확인해 주세요.'},503);
+  if(!env.VIDEO_RENDER_QUEUE&&!renderConfig.url)return json({error:'영상 렌더러 URL이 설정되지 않았습니다.'},503);
+  if(!env.VIDEO_RENDER_QUEUE&&!renderConfig.token)return json({error:'VIDEO_RENDER_DISPATCH_TOKEN을 Cloudflare Production Secret에 설정해 주세요.'},503);
   if(!env.VIDEO_RENDER_QUEUE&&renderConfig.token.length<16)return json({error:'VIDEO_RENDER_DISPATCH_TOKEN은 16자 이상이어야 합니다.'},503);
   if(!env.VIDEO_RENDER_QUEUE&&!validRenderDispatch(renderConfig.url,renderConfig.token,new URL(request.url).origin))return json({error:'VIDEO_RENDER_DISPATCH_URL은 5waveflow가 아닌 외부 HTTPS Webhook 주소여야 합니다.'},503);
   const input=await request.json().catch(()=>null) as {projectId?:unknown;idempotencyKey?:unknown}|null;
@@ -99,7 +99,7 @@ export async function approveVideoProject(request:Request,env:WorkflowEnv){
 }
 
 async function dispatchRender(message:Record<string,unknown>,config:{url:string;token:string}){const response=await fetch(config.url,{method:'POST',headers:{'content-type':'application/json',authorization:`Bearer ${config.token}`,'x-make-apikey':config.token},body:JSON.stringify(message),signal:AbortSignal.timeout(10000)});if(!response.ok)throw new Error('Render dispatch rejected')}
-export function renderDispatchConfig(env:WorkflowEnv){return {url:normalizeRenderSetting(env.VIDEO_RENDER_DISPATCH_URL)||normalizeRenderSetting(env.SNS_PUBLISH_WEBHOOK_URL),token:normalizeRenderSetting(env.VIDEO_RENDER_DISPATCH_TOKEN)||normalizeRenderSetting(env.SNS_PUBLISH_WEBHOOK_TOKEN)}}
+export function renderDispatchConfig(env:WorkflowEnv){return {url:normalizeRenderSetting(env.VIDEO_RENDER_SERVICE_URL)||normalizeRenderSetting(env.VIDEO_RENDER_DISPATCH_URL),token:normalizeRenderSetting(env.VIDEO_RENDER_DISPATCH_TOKEN)}}
 export function validRenderDispatch(urlValue?:string,token?:string,siteOrigin?:string){const urlText=normalizeRenderSetting(urlValue),secret=normalizeRenderSetting(token);if(!urlText||secret.length<16)return false;try{const url=new URL(urlText),origin=siteOrigin?new URL(siteOrigin).origin:'';return url.protocol==='https:'&&url.origin!==origin&&!['localhost','127.0.0.1','::1'].includes(url.hostname)}catch{return false}}
 function normalizeRenderSetting(value?:string){const trimmed=String(value||'').trim();if(trimmed.length>=2&&((trimmed.startsWith('"')&&trimmed.endsWith('"'))||(trimmed.startsWith("'")&&trimmed.endsWith("'"))))return trimmed.slice(1,-1).trim();return trimmed}
 export function isRenderConnectionProbe(error:unknown){return String(error||'').trim()==='Make 콜백 연결 테스트'}
