@@ -1,14 +1,16 @@
 import {hasValidWebhookAuth,json} from '../../_shared/social-publish';
-import {isRenderConnectionProbe} from '../../_shared/workflows';
+import {isRenderConnectionProbe,verifyRenderCallbackToken} from '../../_shared/workflows';
 
 interface MediaBucket {head(key:string):Promise<{size:number}|null>}
-interface Env {DB?:D1Database;SNS_MEDIA_BUCKET?:MediaBucket;VIDEO_RENDER_WEBHOOK_TOKEN?:string;VIDEO_RENDER_DISPATCH_TOKEN?:string}
+interface Env {DB?:D1Database;SNS_MEDIA_BUCKET?:MediaBucket;VIDEO_RENDER_WEBHOOK_TOKEN?:string;VIDEO_RENDER_DISPATCH_TOKEN?:string;SNS_PUBLISH_WEBHOOK_TOKEN?:string}
 export const onRequestPost:PagesFunction<Env>=async({request,env})=>{
-  const authorized=await hasValidWebhookAuth(request,[env.VIDEO_RENDER_WEBHOOK_TOKEN,env.VIDEO_RENDER_DISPATCH_TOKEN]);
-  if(!authorized)return json({error:'Unauthorized'},401,{'WWW-Authenticate':'Bearer'});
-  if(!env.DB)return json({error:'D1 is not configured'},503);
   const input=await request.json().catch(()=>null) as {jobId?:unknown;status?:unknown;r2Key?:unknown;error?:unknown;durationSeconds?:unknown;estimatedCostUsd?:unknown}|null;
   if(typeof input?.jobId!=='string'||!['generating_script','generating_audio','rendering','completed','failed'].includes(String(input.status)))return json({error:'Invalid render status event'},400);
+  const url=new URL(request.url),secrets=[env.VIDEO_RENDER_WEBHOOK_TOKEN,env.VIDEO_RENDER_DISPATCH_TOKEN,env.SNS_PUBLISH_WEBHOOK_TOKEN];
+  const signed= url.searchParams.get('job')===input.jobId&&await verifyRenderCallbackToken(input.jobId,url.searchParams.get('expires'),url.searchParams.get('token'),secrets);
+  const authorized=signed||await hasValidWebhookAuth(request,secrets);
+  if(!authorized)return json({error:'Unauthorized'},401,{'WWW-Authenticate':'Bearer'});
+  if(!env.DB)return json({error:'D1 is not configured'},503);
   const status=String(input.status),job=await env.DB.prepare('SELECT content_project_id FROM video_render_jobs WHERE id=?').bind(input.jobId).first<{content_project_id:string}>();if(!job)return json({error:'Render job not found'},404);
   if(status==='failed'&&isRenderConnectionProbe(input.error)){
     const reason='Make 연결은 확인됐지만 실제 렌더 모듈이 실행되지 않았습니다. Make 시나리오에 영상 렌더 단계와 completed 콜백을 추가해 주세요.';
