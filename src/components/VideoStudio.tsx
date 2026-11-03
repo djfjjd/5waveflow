@@ -4,7 +4,7 @@ import {useNavigate} from 'react-router-dom';
 import {adminFetch as fetch} from '../lib/adminApi';
 import {estimatedVideoProgress,isRenderCallbackDelayed} from '../lib/videoProgress';
 
-type StudioResult={projectId:string;title:string;newsCount:number;status:string;jobId?:string|null;mediaUrl?:string;failureReason?:string|null;updatedAt?:string};
+type StudioResult={projectId:string;title:string;newsCount:number;status:string;jobId?:string|null;mediaUrl?:string;failureReason?:string|null;updatedAt?:string;progressPercent?:number|null};
 
 export default function VideoStudio(){
   const navigate=useNavigate();
@@ -17,7 +17,7 @@ export default function VideoStudio(){
   const approve=async()=>{if(!result)return;setPending(true);setError('');try{const response=await fetch('/api/admin/video-projects/approve',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({projectId:result.projectId,idempotencyKey:crypto.randomUUID()})});const body=await response.json().catch(()=>({})) as {jobId?:string;status?:string;error?:string};if(!response.ok||!body.jobId)throw new Error(body.error||'승인 실패');setResult(current=>current?{...current,jobId:body.jobId,status:body.status||'queued',failureReason:null,updatedAt:new Date().toISOString()}:current)}catch(reason){setError(reason instanceof Error?reason.message:'승인 실패')}finally{setPending(false)}};
   const sendToUpload=()=>{if(!result?.mediaUrl)return;sessionStorage.setItem('5waveflow-rendered-video',JSON.stringify({mediaUrl:result.mediaUrl,title:result.title,caption:`${result.title}\n\n#5WaveFlow #금융뉴스`}));navigate('/admin/publish')};
   const completeWithUpload=async()=>{if(!result||!manualFile)return;setManualUploading(true);setError('');try{const form=new FormData();form.set('file',manualFile);const uploadResponse=await fetch('/api/admin/media',{method:'POST',body:form});const upload=await uploadResponse.json().catch(()=>({})) as {key?:string;error?:string};if(!uploadResponse.ok||!upload.key)throw new Error(upload.error||'MP4 업로드에 실패했습니다.');const response=await fetch('/api/admin/video-projects/complete-upload',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({projectId:result.projectId,key:upload.key})});const body=await response.json().catch(()=>({})) as Partial<StudioResult>&{error?:string};if(!response.ok||body.status!=='completed'||!body.mediaUrl)throw new Error(body.error||'영상 완료 처리에 실패했습니다.');setResult(current=>current?{...current,...body,status:'completed',updatedAt:new Date().toISOString()}:current);setManualFile(null)}catch(reason){setError(reason instanceof Error?reason.message:'영상 완료 처리에 실패했습니다.')}finally{setManualUploading(false)}};
-  const progress=result?estimatedVideoProgress(result.status,result.updatedAt):0,callbackDelayed=result?isRenderCallbackDelayed(result.status,result.updatedAt):false;
+  const progress=result?Math.max(estimatedVideoProgress(result.status,result.updatedAt),Number(result.progressPercent||0)):0,callbackDelayed=result?isRenderCallbackDelayed(result.status,result.updatedAt):false;
   return <div className="card p-6">
     <div className="flex items-center gap-2"><Film className="text-primary" size={18}/><h2 className="font-semibold">AI 영상 제작</h2></div>
     <p className="mt-3 text-sm leading-6 text-neutral">통합 금융 뉴스 페이지에 저장된 최신 뉴스 최대 20건을 불러옵니다. AI 분석이 있으면 분석 요약을 우선 사용하고, 분석 전 뉴스는 확인된 기사 요약이나 제목만 사용합니다.</p>

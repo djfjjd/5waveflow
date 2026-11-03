@@ -28,10 +28,12 @@ async function processRender(request:RenderRequest,config:RendererConfig){
     const serveUrl=await getServeUrl(),durationSeconds=request.durationSeconds,durationInFrames=Math.ceil(durationSeconds*request.fps);
     const composition=await selectComposition({serveUrl,id:request.composition,inputProps:props,browserExecutable:config.browserExecutable});
     const outputPath=join(workdir,`${request.jobId}.mp4`);
-    await renderMedia({serveUrl,composition:{...composition,durationInFrames,width:request.width,height:request.height,fps:request.fps},codec:'h264',outputLocation:outputPath,inputProps:props,concurrency:config.renderConcurrency,browserExecutable:config.browserExecutable});
+    let reportedProgress=80,progressCallbacks=Promise.resolve();
+    await renderMedia({serveUrl,composition:{...composition,durationInFrames,width:request.width,height:request.height,fps:request.fps},codec:'h264',outputLocation:outputPath,inputProps:props,concurrency:config.renderConcurrency,browserExecutable:config.browserExecutable,onProgress:({progress})=>{const next=Math.min(98,80+Math.floor(progress*18));if(next<reportedProgress+2)return;reportedProgress=next;progressCallbacks=progressCallbacks.then(()=>callback(request,config,'rendering',{progressPercent:next})).catch(error=>console.error('progress callback failed',request.jobId,error))}});
+    await progressCallbacks;
     const r2Key=`renders/${request.projectId}/${request.jobId}.mp4`,client=new S3Client({region:'auto',endpoint:config.r2Endpoint,credentials:{accessKeyId:config.r2AccessKeyId,secretAccessKey:config.r2SecretAccessKey}});
     await client.send(new PutObjectCommand({Bucket:config.r2Bucket,Key:r2Key,Body:createReadStream(outputPath),ContentType:'video/mp4'}));
-    await callback(request,config,'completed',{r2Key,durationSeconds,estimatedCostUsd:0});
+    await callback(request,config,'completed',{r2Key,durationSeconds,estimatedCostUsd:0,progressPercent:100});
   }catch(error){console.error('render failed',request.jobId,error);await callback(request,config,'failed',{error:safeError(error)}).catch(callbackError=>console.error('failure callback failed',callbackError))}
   finally{await rm(workdir,{recursive:true,force:true})}
 }

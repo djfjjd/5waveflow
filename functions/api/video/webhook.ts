@@ -4,14 +4,15 @@ import {isRenderConnectionProbe,verifyRenderCallbackToken} from '../../_shared/w
 interface MediaBucket {head(key:string):Promise<{size:number}|null>}
 interface Env {DB?:D1Database;SNS_MEDIA_BUCKET?:MediaBucket;VIDEO_RENDER_WEBHOOK_TOKEN?:string;VIDEO_RENDER_DISPATCH_TOKEN?:string;SNS_PUBLISH_WEBHOOK_TOKEN?:string}
 export const onRequestPost:PagesFunction<Env>=async({request,env})=>{
-  const input=await request.json().catch(()=>null) as {jobId?:unknown;status?:unknown;r2Key?:unknown;error?:unknown;durationSeconds?:unknown;estimatedCostUsd?:unknown}|null;
+  const input=await request.json().catch(()=>null) as {jobId?:unknown;status?:unknown;r2Key?:unknown;error?:unknown;durationSeconds?:unknown;estimatedCostUsd?:unknown;progressPercent?:unknown}|null;
   if(typeof input?.jobId!=='string'||!['generating_script','generating_audio','rendering','completed','failed'].includes(String(input.status)))return json({error:'Invalid render status event'},400);
   const url=new URL(request.url),secrets=[env.VIDEO_RENDER_WEBHOOK_TOKEN,env.VIDEO_RENDER_DISPATCH_TOKEN,env.SNS_PUBLISH_WEBHOOK_TOKEN];
   const signed= url.searchParams.get('job')===input.jobId&&await verifyRenderCallbackToken(input.jobId,url.searchParams.get('expires'),url.searchParams.get('token'),secrets);
   const authorized=signed||await hasValidWebhookAuth(request,secrets);
   if(!authorized)return json({error:'Unauthorized'},401,{'WWW-Authenticate':'Bearer'});
   if(!env.DB)return json({error:'D1 is not configured'},503);
-  const status=String(input.status),job=await env.DB.prepare('SELECT content_project_id FROM video_render_jobs WHERE id=?').bind(input.jobId).first<{content_project_id:string}>();if(!job)return json({error:'Render job not found'},404);
+  const status=String(input.status),job=await env.DB.prepare('SELECT content_project_id,status FROM video_render_jobs WHERE id=?').bind(input.jobId).first<{content_project_id:string;status:string}>();if(!job)return json({error:'Render job not found'},404);
+  if(['completed','failed'].includes(job.status)&&!['completed','failed'].includes(status))return json({ok:true,ignored:true,jobId:input.jobId,status:job.status});
   if(status==='failed'&&isRenderConnectionProbe(input.error)){
     const reason='Make 연결은 확인됐지만 실제 렌더 모듈이 실행되지 않았습니다. Make 시나리오에 영상 렌더 단계와 completed 콜백을 추가해 주세요.';
     await env.DB.batch([env.DB.prepare("UPDATE video_render_jobs SET status='failed',failure_reason=?,updated_at=CURRENT_TIMESTAMP,attempt_count=attempt_count+1 WHERE id=?").bind(reason,input.jobId),env.DB.prepare("UPDATE content_projects SET status='draft' WHERE id=?").bind(job.content_project_id)]);
@@ -20,8 +21,8 @@ export const onRequestPost:PagesFunction<Env>=async({request,env})=>{
   if(status==='completed'){
     if(typeof input.r2Key!=='string'||!env.SNS_MEDIA_BUCKET)return json({error:'Completed render requires an R2 object'},400);
     const object=await env.SNS_MEDIA_BUCKET.head(input.r2Key);if(!object)return json({error:'Rendered R2 object was not found'},400);
-    await env.DB.batch([env.DB.prepare("UPDATE video_render_jobs SET status='completed',completed_at=CURRENT_TIMESTAMP,updated_at=CURRENT_TIMESTAMP,attempt_count=attempt_count+1 WHERE id=?").bind(input.jobId),env.DB.prepare("UPDATE content_projects SET status='completed',output_r2_key=?,estimated_cost_usd=? WHERE id=?").bind(input.r2Key,Number(input.estimatedCostUsd||0),job.content_project_id),env.DB.prepare("INSERT OR IGNORE INTO media_assets(id,content_project_id,r2_key,media_type,mime_type,size_bytes,duration_seconds,rights_source) VALUES(?,?,?,'video','video/mp4',?,?, 'original-render')").bind(crypto.randomUUID(),job.content_project_id,input.r2Key,object.size,Number(input.durationSeconds||0))]);
+    await env.DB.batch([env.DB.prepare("UPDATE video_render_jobs SET status='completed',progress_percent=100,completed_at=CURRENT_TIMESTAMP,updated_at=CURRENT_TIMESTAMP,attempt_count=attempt_count+1 WHERE id=?").bind(input.jobId),env.DB.prepare("UPDATE content_projects SET status='completed',output_r2_key=?,estimated_cost_usd=? WHERE id=?").bind(input.r2Key,Number(input.estimatedCostUsd||0),job.content_project_id),env.DB.prepare("INSERT OR IGNORE INTO media_assets(id,content_project_id,r2_key,media_type,mime_type,size_bytes,duration_seconds,rights_source) VALUES(?,?,?,'video','video/mp4',?,?, 'original-render')").bind(crypto.randomUUID(),job.content_project_id,input.r2Key,object.size,Number(input.durationSeconds||0))]);
   }else if(status==='failed')await env.DB.batch([env.DB.prepare("UPDATE video_render_jobs SET status='failed',failure_reason=?,updated_at=CURRENT_TIMESTAMP,attempt_count=attempt_count+1 WHERE id=?").bind(String(input.error||'Renderer failed').slice(0,500),input.jobId),env.DB.prepare("UPDATE content_projects SET status='draft' WHERE id=?").bind(job.content_project_id)]);
-  else await env.DB.prepare('UPDATE video_render_jobs SET status=?,started_at=COALESCE(started_at,CURRENT_TIMESTAMP),updated_at=CURRENT_TIMESTAMP WHERE id=?').bind(status,input.jobId).run();
+  else{const stageProgress=status==='generating_script'?35:status==='generating_audio'?55:80,reported=Math.floor(Number(input.progressPercent));const progress=Number.isFinite(reported)?Math.max(stageProgress,Math.min(98,reported)):stageProgress;await env.DB.prepare('UPDATE video_render_jobs SET status=?,progress_percent=?,started_at=COALESCE(started_at,CURRENT_TIMESTAMP),updated_at=CURRENT_TIMESTAMP WHERE id=?').bind(status,progress,input.jobId).run()}
   return json({ok:true,jobId:input.jobId,status});
 };

@@ -71,12 +71,12 @@ async function videoProjectStatus(projectId:string,request:Request,env:Env){
     env.DB.prepare("UPDATE video_render_jobs SET status='failed',failure_reason=CASE status WHEN 'queued' THEN '렌더 단계 타임아웃: 요청 수신 후 15분 동안 상태 콜백이 없습니다.' WHEN 'generating_script' THEN '렌더 단계 타임아웃: generating_script 이후 15분 동안 다음 콜백이 없습니다.' WHEN 'generating_audio' THEN '렌더 단계 타임아웃: generating_audio 이후 15분 동안 다음 콜백이 없습니다.' ELSE '렌더 단계 타임아웃: rendering 이후 15분 동안 completed 콜백이 없습니다.' END,attempt_count=attempt_count+1,updated_at=CURRENT_TIMESTAMP WHERE content_project_id=? AND status IN ('queued','generating_script','generating_audio','rendering') AND updated_at <= datetime('now','-15 minutes')").bind(projectId),
     env.DB.prepare("UPDATE content_projects SET status='draft' WHERE id=? AND EXISTS(SELECT 1 FROM video_render_jobs WHERE content_project_id=? AND status='failed' AND failure_reason LIKE '렌더 단계 타임아웃:%') AND NOT EXISTS(SELECT 1 FROM video_render_jobs WHERE content_project_id=? AND status IN ('queued','generating_script','generating_audio','rendering'))").bind(projectId,projectId,projectId)
   ]);
-  const project=await env.DB.prepare(`SELECT p.id,p.title,p.status,p.output_r2_key,p.created_at,j.id job_id,j.status job_status,j.failure_reason,j.updated_at
+  const project=await env.DB.prepare(`SELECT p.id,p.title,p.status,p.output_r2_key,p.created_at,j.id job_id,j.status job_status,j.progress_percent,j.failure_reason,j.updated_at
     FROM content_projects p LEFT JOIN video_render_jobs j ON j.content_project_id=p.id WHERE p.id=? ORDER BY j.created_at DESC LIMIT 1`).bind(projectId).first<Record<string,unknown>>();
   if(!project)return json({error:'영상 프로젝트를 찾을 수 없습니다.'},404);
   let mediaUrl:string|undefined;
   if(project.status==='completed'&&typeof project.output_r2_key==='string')mediaUrl=await createSignedMediaUrl(new URL(request.url).origin,project.output_r2_key,env);
-  return json({projectId:project.id,title:project.title,status:project.job_status||project.status,projectStatus:project.status,jobId:project.job_id||null,failureReason:project.failure_reason||null,updatedAt:project.updated_at||project.created_at,mediaUrl});
+  return json({projectId:project.id,title:project.title,status:project.job_status||project.status,projectStatus:project.status,jobId:project.job_id||null,progressPercent:project.progress_percent||null,failureReason:project.failure_reason||null,updatedAt:project.updated_at||project.created_at,mediaUrl});
 }
 
 async function completeVideoUpload(request:Request,env:Env){
