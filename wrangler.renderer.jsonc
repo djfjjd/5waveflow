@@ -1,0 +1,31 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "5waveflow-renderer",
+  "main": "packages/video-renderer/cloudflare/index.ts",
+  "compatibility_date": "2026-11-01",
+  "upload_source_maps": true,
+  "workers_dev": true,
+  "containers": [
+    {
+      "name": "waveflow5-video-renderer",
+      "class_name": "VideoRendererContainer",
+      "image": "./Dockerfile.video-renderer",
+      "instance_type": "standard-2",
+      "max_instances": 1
+    }
+  ],
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "VIDEO_RENDERER",
+        "class_name": "VideoRendererContainer"
+      }
+    ]
+  },
+  "exports": {
+    "VideoRendererContainer": {
+      "type": "durable-object",
+      "storage": "sqlite"
+    }
+  }
+}

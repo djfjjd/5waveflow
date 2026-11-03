@@ -1,0 +1,9 @@
+*
+!package.json
+!package-lock.json
+!packages/
+packages/*
+!packages/video-renderer/
+!packages/video-renderer/**
+packages/video-renderer/node_modules/
+packages/video-renderer/dist/

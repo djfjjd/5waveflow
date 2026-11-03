@@ -5,8 +5,9 @@ import reactRefresh from 'eslint-plugin-react-refresh';
 import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
-  {ignores:['dist','node_modules','apps/android','functions/_worker.js']},
+  {ignores:['dist','packages/video-renderer/dist','node_modules','apps/android','functions/_worker.js']},
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {files:['src/**/*.{ts,tsx}','functions/**/*.ts','workers/**/*.ts'],languageOptions:{ecmaVersion:2022,globals:{...globals.browser,...globals.worker}},plugins:{'react-hooks':reactHooks,'react-refresh':reactRefresh},rules:{...reactHooks.configs.recommended.rules,'react-refresh/only-export-components':['warn',{allowConstantExport:true}],'@typescript-eslint/no-explicit-any':'off'}}
+  ,{files:['packages/video-renderer/src/**/*.{ts,tsx}'],languageOptions:{ecmaVersion:2022,globals:{...globals.node,...globals.es2022}},plugins:{'react-hooks':reactHooks},rules:{...reactHooks.configs.recommended.rules,'@typescript-eslint/no-explicit-any':'off'}}
 );

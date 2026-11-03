@@ -20,13 +20,15 @@ News stores title, source, canonical source URL and timestamps, but not unauthor
 
 `migrations/0005_news_sources.sql` adds per-source intervals, search terms, connection/error state, retry counters and collection-run usage records. Default interval is 15 minutes. NAVER search terms are editable under `/admin/news`.
 
-## Manual infrastructure
+## Renderer infrastructure
 
-Apply `migrations/0004_news_video_automation.sql` to the existing D1 database. Configure an AI endpoint only after choosing its data retention and commercial terms. Rendering can use either a Cloudflare Queue producer bound as `VIDEO_RENDER_QUEUE`, or an external HTTPS renderer configured with `VIDEO_RENDER_DISPATCH_URL` and `VIDEO_RENDER_DISPATCH_TOKEN`. The renderer must run in a separately approved Node environment with Remotion, Chromium and FFmpeg because Pages Functions cannot perform the render reliably. It needs restricted R2 write credentials and calls `/api/video/webhook` with either `Authorization: Bearer <VIDEO_RENDER_WEBHOOK_TOKEN>` or Make-compatible `x-make-apikey: <VIDEO_RENDER_DISPATCH_TOKEN>`.
+Apply `migrations/0004_news_video_automation.sql` to the existing D1 database. Configure an AI endpoint only after choosing its data retention and commercial terms. Rendering can use either a Cloudflare Queue producer bound as `VIDEO_RENDER_QUEUE`, or an external HTTPS renderer configured with `VIDEO_RENDER_SERVICE_URL` and `VIDEO_RENDER_DISPATCH_TOKEN`. Pages Functions cannot perform the render reliably.
+
+The repository now includes the external Node worker under `packages/video-renderer`. It uses Remotion, Chromium, FFmpeg, an internally timed Korean subtitle track, and restricted R2 S3 credentials. It creates a silent captioned MP4 so the creator can record a voice-over separately. Pages sends render jobs directly to the renderer URL configured as `VIDEO_RENDER_SERVICE_URL`; the video path does not fall back to the SNS Make webhook. The worker sends `generating_script`, `generating_audio`, `rendering`, and `completed` callbacks through a job-scoped signed callback URL. The legacy `generating_audio` status is retained for database compatibility but now represents subtitle composition.
 
 Schedule `POST /api/admin/news/collect` every 15 minutes from an authenticated Make schedule or another approved scheduler. Cloudflare Access service-token headers are required. Do not expose the collection endpoint publicly.
 
-TTS is not selected or enabled. Before implementation, choose a provider with Korean commercial usage rights and store credentials only in the renderer. Music, sound effects and stock media require documented commercial licenses.
+External TTS is not used. The renderer creates a silent subtitle-only video, and recorded narration may be added during editing. Music, sound effects and stock media require documented commercial licenses.
 
 ## Prediction integrity
 
@@ -34,12 +36,11 @@ TTS is not selected or enabled. Before implementation, choose a provider with Ko
 
 ## Approximate operating cost
 
-GDELT collection itself is free, subject to fair-use availability. Cloudflare Pages, D1, R2 and Queues often begin within free allowances; storage, operations and egress depend on account plan and usage. AI analysis, Korean TTS, rendering compute, Make operations and SNS API tiers are provider-dependent. Set `automation_settings.daily_cost_limit_usd`; the current foundation records usage but does not yet stop third-party billing automatically. Start with manual collection/analysis, one approved render at a time and SNS auto-publish disabled.
+GDELT collection itself is free, subject to fair-use availability. Cloudflare Pages, D1, R2 and Queues often begin within free allowances; storage, operations and egress depend on account plan and usage. AI analysis, rendering compute, Make operations and SNS API tiers are provider-dependent. Set `automation_settings.daily_cost_limit_usd`; the current foundation records usage but does not yet stop third-party billing automatically. Start with manual collection/analysis, one approved render at a time and SNS auto-publish disabled.
 
 ## External approvals still required
 
 - AI model provider key and approved model
-- Korean TTS provider and commercial voice rights
 - Queue consumer/render host with Remotion + FFmpeg
 - YouTube, Instagram, TikTok, Threads and X application review/OAuth scopes
 - Licensed music, effects and supporting media
