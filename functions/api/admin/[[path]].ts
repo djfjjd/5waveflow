@@ -79,7 +79,10 @@ async function videoProjectStatus(projectId:string,request:Request,env:Env){
     if(!project)return json({error:'영상 프로젝트를 찾을 수 없습니다.'},404);
   }
   let mediaUrl:string|undefined;
-  if(project.status==='completed'&&typeof project.output_r2_key==='string')mediaUrl=await createSignedMediaUrl(new URL(request.url).origin,project.output_r2_key,env);
+  if(project.status==='completed'&&typeof project.output_r2_key==='string'){
+    if(!env.SNS_MEDIA_SIGNING_SECRET||env.SNS_MEDIA_SIGNING_SECRET.length<32)return json({error:'완료 영상 미리보기용 SNS_MEDIA_SIGNING_SECRET이 설정되지 않았습니다.'},503);
+    mediaUrl=await createSignedMediaUrl(new URL(request.url).origin,project.output_r2_key,env);
+  }
   return json({projectId:project.id,title:project.title,status:project.job_status||project.status,projectStatus:project.status,jobId:project.job_id||null,progressPercent:project.progress_percent||null,failureReason:project.failure_reason||null,updatedAt:project.updated_at||project.created_at,mediaUrl});
 }
 
