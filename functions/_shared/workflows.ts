@@ -69,8 +69,8 @@ export async function createVideoProject(request:Request,env:WorkflowEnv){
   const input=await request.json().catch(()=>null) as {mode?:unknown;analysisId?:unknown;duration?:unknown;style?:unknown;voice?:unknown;voiceSpeed?:unknown}|null;
   const duration=Number(input?.duration),style=String(input?.style||''),voice=String(input?.voice||''),speed=Number(input?.voiceSpeed||1);
   if(input?.mode!=='recent20'||![30,60,90].includes(duration)||!['briefing','chart','fast','crypto','markets'].includes(style)||!['none','male','female'].includes(voice)||speed<0.8||speed>1.3)return json({error:'영상 프로젝트 설정을 확인해 주세요.'},400);
-  const analyses=await env.DB.prepare(`SELECT n.id news_id,n.title news_title,n.source,n.source_url,n.published_at,n.summary article_summary,
-    a.id analysis_id,a.summary analysis_summary,a.sentiment
+  const analyses=await env.DB.prepare(`SELECT n.id news_id,n.title news_title,n.source,n.source_url,n.published_at,n.summary article_summary,n.category,n.importance,n.assets_json,
+    a.id analysis_id,a.summary analysis_summary,a.importance_reason,a.short_term_scenario,a.counter_scenario,a.sentiment
     FROM news_articles n LEFT JOIN news_analysis a ON a.id=(SELECT a2.id FROM news_analysis a2 WHERE a2.news_id=n.id ORDER BY a2.generated_at DESC LIMIT 1)
     ORDER BY n.published_at DESC LIMIT 20`).all<Record<string,unknown>>();
   if(!analyses.results.length)return json({error:'영상으로 만들 수 있는 수집 뉴스가 없습니다.'},404);
@@ -122,6 +122,21 @@ async function technicalSnapshots(request:Request,assetsJson:string){
 }
 async function usage(db:D1Database,provider:string,operation:string,units:number,cost:number){await db.prepare('INSERT INTO api_usage_logs(provider,operation,units,estimated_cost_usd) VALUES(?,?,?,?)').bind(provider,operation,units,cost).run()}
 export function buildVideoScript(analysis:Record<string,unknown>){return {status:'draft_requires_fact_check',hook:String(analysis.news_title),sections:[{type:'news',text:String(analysis.summary)},{type:'impact',text:String(analysis.importance_reason)},{type:'scenario',text:String(analysis.short_term_scenario)},{type:'counter',text:String(analysis.counter_scenario)}],sourceUrl:analysis.source_url,branding:'5WaveFlow',disclaimer:'투자 자문이 아닌 정보 제공 목적입니다.'}}
-export function buildRecentNewsVideoScript(analyses:Record<string,unknown>[]){return {status:'draft_requires_fact_check',hook:`최근 금융 뉴스 ${analyses.length}건을 빠르게 정리합니다.`,sections:analyses.map((analysis,index)=>({type:'news',index:index+1,title:text(analysis.news_title),text:text(analysis.analysis_summary)||text(analysis.article_summary)||text(analysis.news_title),sentiment:text(analysis.sentiment)||'분석 전',analysisStatus:analysis.analysis_id?'completed':'not_analyzed',source:text(analysis.source),sourceUrl:text(analysis.source_url),publishedAt:text(analysis.published_at)})),branding:'5WaveFlow',disclaimer:'수집된 출처와 이용 가능한 분석 요약을 바탕으로 구성한 초안이며 투자 자문이 아닙니다.'}}
+export function buildRecentNewsVideoScript(analyses:Record<string,unknown>[]){
+  const ordered=[...analyses].sort((a,b)=>(Number(b.importance)||0)-(Number(a.importance)||0)),facts=uniqueBriefFacts(ordered),sentiments=ordered.map(item=>text(item.sentiment)),positive=sentiments.filter(value=>value==='positive').length,negative=sentiments.filter(value=>value==='negative').length;
+  const lead=facts[0]||'최근 금융시장 주요 이슈를 확인했습니다',second=facts[1],third=facts[2],fourth=facts[3],fifth=facts[4],sixth=facts[5];
+  const sections=[
+    {type:'briefing',title:'핵심 흐름',text:`최근 시장의 핵심은 ${sentenceLead(lead)}${second?` 동시에 ${sentenceLead(second)}`:''}`},
+    third?{type:'briefing',title:'주요 변수',text:`추가로 확인할 변화는 ${sentenceLead(third)}${fourth?` 이와 함께 ${sentenceLead(fourth)}`:''}`}:null,
+    {type:'briefing',title:'시장 영향',text:`${positive>negative?'호재성 해석이 상대적으로 많지만 변동성 확대 가능성도 함께 확인해야 합니다.':negative>positive?'부정적 영향에 대한 경계가 우세하지만 반대 시나리오도 열어둘 필요가 있습니다.':'긍정과 부정 요인이 혼재해 방향보다 변동성 관리가 중요한 구간입니다.'}${fifth?` 시장이 주목할 근거는 ${sentenceLead(fifth)}`:''}`},
+    sixth?{type:'briefing',title:'확인 포인트',text:`단기적으로 확인할 지점은 ${sentenceLead(sixth)} 뉴스가 실제 가격과 거래량으로 이어지는지 확인해야 합니다.`}:null,
+    {type:'briefing',title:'오늘의 결론',text:`정리하면 여러 뉴스를 따로 보기보다 핵심 변수들이 서로 어떤 경로로 시장에 영향을 주는지 확인해야 합니다. 확인되지 않은 전망보다 공개된 사실과 실제 가격 반응을 우선하세요.`}
+  ].filter((section):section is {type:string;title:string;text:string}=>Boolean(section));
+  const sources=ordered.map(item=>({name:text(item.source),url:text(item.source_url),publishedAt:text(item.published_at)})).filter((item,index,list)=>item.url&&list.findIndex(candidate=>candidate.url===item.url)===index);
+  return {status:'draft_requires_fact_check',hook:`최근 금융 뉴스 ${analyses.length}건을 하나의 시장 브리핑으로 정리했습니다.`,sections,sources,sourceCount:sources.length,branding:'5WaveFlow',disclaimer:'공개된 뉴스와 분석 요약을 통합 재구성한 정보이며 투자 자문이 아닙니다.'}
+}
+function uniqueBriefFacts(analyses:Record<string,unknown>[]){const facts:string[]=[];for(const item of analyses){const candidate=briefFact(text(item.analysis_summary)||text(item.article_summary)||text(item.news_title));if(!candidate)continue;const key=candidate.toLowerCase().replace(/[^\p{L}\p{N}]/gu,'');if(facts.some(existing=>{const existingKey=existing.toLowerCase().replace(/[^\p{L}\p{N}]/gu,'');return existingKey===key||existingKey.includes(key)||key.includes(existingKey)}))continue;facts.push(candidate);if(facts.length===6)break}return facts}
+function briefFact(value:string){const cleaned=value.replace(/<[^>]+>/g,' ').replace(/https?:\/\/\S+/g,' ').replace(/\s+/g,' ').trim();if(!cleaned)return '';const first=cleaned.split(/(?<=[.!?。]|다\.)\s+/)[0]||cleaned;return first.length>95?`${first.slice(0,94)}…`:first}
+function sentenceLead(value:string){const cleaned=value.replace(/[.!?。]+$/,'').trim();if(!cleaned)return '';return /(?:다|요|니다)$/.test(cleaned)?`${cleaned}.`:`${cleaned}입니다.`}
 function text(value:unknown){return typeof value==='string'?value.trim():''}
 function safePartnerUrl(value:string,provider:'coinness'|'xangle'){try{const url=new URL(value),host=url.hostname.toLowerCase(),allowed=provider==='coinness'?(host==='coinness.com'||host.endsWith('.coinness.com')):(host==='xangle.io'||host.endsWith('.xangle.io'));return url.protocol==='https:'&&allowed?url.toString():null}catch{return null}}
